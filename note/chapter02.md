@@ -26,7 +26,7 @@ fun main() {
 Java 和 Kotlin 数据类型对照
 
 | Java 基本数据类型 | Kotlin 对象数据类型 | 数据类型说明 |
-|:---:|:--------------:|:-----------|
+|:---|:--------------|:-----------|
 |int|Int|整形|
 |long|Long|长整形|
 |short|Short|短整形|
@@ -333,3 +333,62 @@ class Student : Person {
 因为此时不存在 Student 类的主构造函数要指定调用父类哪个构造函数的问题了。
 
 同时由于 Student 类没有主构造函数，次构造函数就必须通过 super 直接调用父构造函数了。
+
+### 接口
+
+Kotlin 中的接口部分和 Java 几乎是完全一致的。
+
+```kotlin
+interface Study {
+    fun readBooks()
+    fun doHomework()
+}
+
+class Student(val sno: String, val grade: Int, name: String, age: Int) : Person(name, age), Study {
+
+    override fun readBooks() {
+        println("$name is reading.")
+    }
+
+    override fun doHomework() {
+        println("$name is doing homework.")
+    }
+}
+
+fun main() {
+    val student = Student("Jack", 19)
+    doStudy(student)
+}
+
+fun doStudy(study: Study) {
+    study.readBooks()
+    study.doHomework()
+}
+```
+
+Kotlin 中**继承与实现统一使用冒号，中间用逗号进行分隔**，使用 **override** 关键字来重写父类或者接口中的函数。
+
+Kotlin 允许**对接口中定义的函数进行默认实现**。Java 从 Java 8 开始也支持了这个功能，默认方法要用 default 修饰，Kotlin 中直接给接口中的函数写函数体即可。
+
+```kotlin
+interface Study {
+    fun readBooks()
+
+    fun doHomework() {
+        println("do homework default implementation")
+    }
+}
+```
+
+### 函数的可见性修饰符
+
+Java 和 Kotlin 函数可见性修饰符对照表
+
+| 修饰符 | Java | Kotlin |
+|:---|:-----|:-----|
+|public|所有类可见|所有类可见（默认）|
+|private|当前类可见|当前类可见|
+|protected|当前类、子类、同一包路径下的类可见|当前类、子类可见|
+|default|同一包路径下的类可见（默认）|无|
+|internal|无|同一模块中的类可见|
+
