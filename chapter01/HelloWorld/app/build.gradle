@@ -1,0 +1,55 @@
+// com.android.application  应用程序模块 可以直接运行
+// com.android.library  库模块
+apply plugin: 'com.android.application'
+// 使用 kotlin 进行开发
+apply plugin: 'kotlin-android'
+// kotlin 的扩展功能
+apply plugin: 'kotlin-android-extensions'
+
+android {
+    compileSdkVersion 29
+    buildToolsVersion "29.0.2"
+
+    defaultConfig {
+        applicationId "com.homurax.helloworld"
+        // 最低兼容版本
+        minSdkVersion 21
+        // 充分测试版本
+        targetSdkVersion 29
+        // 项目的版本号
+        versionCode 1
+        // 项目的版本名
+        versionName "1.0"
+        // 启用 JUnit 测试
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        // debug 闭包：生成测试版本安装文件的配置
+        // release 闭包：生成正式版本安装文件的配置
+        release {
+            // 是否进行混淆
+            minifyEnabled false
+            // 混淆时使用规则
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+}
+
+// 本地依赖：对本地 jar 包或目录添加依赖关系
+// 库依赖：对项目中的库模块添加依赖关系 implementation project(':helper')
+// 远程依赖：对 jcenter 仓库上的开源项目添加依赖关系
+dependencies {
+    // 本地依赖声明
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    // 远程依赖声明 域名:工程名:版本号
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.core:core-ktx:1.2.0'
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
+    // 声明测试用例库
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+}
