@@ -1,8 +1,39 @@
 package com.homurax.helloworld
 
+var content: String? = null
+
 fun main() {
-    Thread { println("Thread is running.") }.start()
+    if (content != null) {
+        printUpperCase()
+    }
 }
+
+fun printParams(num: Int = 5, str: String) {
+    println("num is $num, str is $str")
+}
+
+fun printUpperCase() {
+    val toUpperCase = content!!.toUpperCase()
+    println(toUpperCase)
+}
+
+var study: Study? = null
+
+fun doStudy(study: Study?) {
+    study?.let {
+        it.readBooks()
+        it.doHomework()
+    }
+}
+
+fun doStudy() {
+    study?.let {
+        it.readBooks()
+        it.doHomework()
+    }
+}
+
+fun getTextLength(text: String?) = text?.length ?: 0
 
 fun test() {
     for (i in 0..10 step 2) {
@@ -14,6 +45,12 @@ fun test() {
     for (i in 10 downTo 1 step 4) {
         println(i)
     }
+
+    val student1 = Student()
+    val student2 = Student("Jack", 19)
+    val student3 = Student("123", 5, "Tom", 16)
+    doStudy(student2)
+
     val c1 = CellPhone("abc", 1234.56)
     val c2 = CellPhone("abc", 1234.56)
     println(c1 == c2)
@@ -51,6 +88,7 @@ fun test() {
     val allResult = list1.all { it.length <= 5 }
     println(anyResult)
     println(allResult)
+    Thread { println("Thread is running.") }.start()
 }
 
 fun checkNumber(num: Number) = when (num) {

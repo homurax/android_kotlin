@@ -623,3 +623,271 @@ new Thread(() -> System.out.println("Thread is running.")).start();
 
 因为后面用到的 Android SDK 还是用 Java 语言编写的，所以在 Kotlin 中调用这些 SDK 接口时，就可能会用到这种 Java 函数式 API 的写法。
 
+## 空指针检查
+
+**Kotlin 默认所有的参数和变量都不可为空**，如果尝试向 doStudy 函数传入一个null参数，则会提示`Null can not be a value of a non-null type Study` 。
+
+```kotlin
+fun main() {
+    // error! Null can not be a value of a non-null type Study
+    doStudy(null)
+}
+
+fun doStudy(study: Study) {
+    study.readBooks()
+    study.doHomework()
+}
+```
+
+Kotlin 将空指针异常的检查提前到了编译期，如果程序存在空指针异常的风险，那么在编译的时候会直接报错。
+
+Kotlin 提供了另外一套可为空的类型系统，在使用时需要在编译期就将所有潜在的空指针异常都处理掉，否则代码无法编译通过。使用上就是在类名的后面加上一个问号。比如，`Int?` 表示可为空的整形，`String?` 表示可为空的字符串。
+
+如果使用了 ? 而不处理潜在可能的空指针异常，不能通过编译：
+
+```kotlin
+fun main() {
+    doStudy(null)
+}
+
+fun doStudy(study: Study?) {
+    // Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type Study?
+    study.readBooks()
+    // Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type Study?
+    study.doHomework()
+}
+```
+
+处理掉空指针异常，可以通过编译：
+
+```kotlin
+fun doStudy(study: Study?) {
+   if (study != null) {
+       study.readBooks()
+       study.doHomework()
+   }
+}
+```
+
+### 判空辅助工具
+
+**`?.`** 操作符，**当对象不为空时正常调用相应的方法，为空时什么也不做**。
+
+对于如下代码：
+
+```kotlin
+if (study != null) {
+   study.readBooks()
+   study.doHomework()
+}
+```
+
+可以转换为：
+
+```kotlin
+study?.readBooks()
+study?.doHomework()
+```
+
+**`?:`** 操作符，操作符左右都接收一个表达式，**如果左边表达式的结果不为空就返回左边表达式的结果，否则就返回右边表达式的结果**。
+
+```kotlin
+val c = if (a != null) {
+    a
+} else {
+    b
+}
+```
+
+可以简化为：
+
+```kotlin
+val c = a ?: b
+```
+
+一个同时使用 `?.` 和 `?:` 的例子，对如下获得文本长度的函数：
+
+```kotlin
+fun getTextLength(text: String?): Int {
+    if (text != null) {
+        return text.length
+    }
+    return 0
+}
+```
+
+可以简化为：
+
+```kotlin
+fun getTextLength(text: String?) = text?.length ?: 0
+```
+
+当 text 为空时，`text?.length` 会返回一个 null，再借助 `?:` 让它返回0。
+
+
+
+有时可能从逻辑上已经将空指针异常处理了，但是 Kotlin 的编译器并不能认知到，这个时候还是会编译失败，常见对于全局变量进行判断时。
+
+```kotlin
+var content: String? = null
+
+fun main() {
+    if (content != null) {
+        printUpperCase()
+    }
+}
+
+fun printUpperCase() {
+    // error! Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type String?
+    val toUpperCase = content.toUpperCase()
+    println(toUpperCase)
+}
+```
+
+`printUpperCase()` 函数并不知道外部已经对 content 变量进行了非空检查，在调用 `toUpperCase()` 方法时，还认为这里存在空指针风险，从而无法编译通过。
+
+如果想要强行通过编译，可以使用非空断言工具，写法是在对象的后面加上 `!!`
+
+```kotlin
+fun printUpperCase() {
+    val toUpperCase = content!!.toUpperCase()
+    println(toUpperCase)
+}
+```
+
+这是一种有风险的写法，意在告诉 Kotlin 不需要做空指针检查，如果出现问题，可以直接抛出空指针异常。
+
+当想使用非空断言工具时，最好想想是不是有更好的实现方式。**你最自信这个对象不会为空的时候，其实可能就是一个潜在空指针异常发生的时候。**
+
+
+
+辅助工具 **`let`** 不是操作符或关键字，而是一个函数。这个函数提供函数式 API 的编程接口，并将原始调用对象作为参数传递到 Lambda 表达式中，其中代码会立即执行。
+
+上面使用 `?.` 的代码：
+
+```kotlin
+study?.readBooks()
+study?.doHomework()
+```
+
+实际对应的代码就是：
+
+```kotlin
+if (study != null) {
+    study.readBooks()
+}
+if (study != null) {
+    study.doHomework()
+}
+```
+
+每一次使用 `?.` 都进行了一次 if 判断。
+
+使用 `let` 结合 `?.` 可以进行简化
+
+```kotlin
+fun doStudy(study: Study?) {
+    study?.let { stu -> {
+        stu.readBooks()
+        stu.doHomework()
+    } }
+}
+```
+
+又因为当 Lambda 表达式的参数列表只有一个参数时，可以使用 `it` 关键字代替
+
+```kotlin
+fun doStudy(study: Study?) {
+    study?.let {
+        it.readBooks()
+        it.doHomework()
+    }
+}
+```
+
+这里 let 的使用有点类似于 Java 8 中的 Optional 。
+
+**let 函数是可以处理全局变量的判空问题的**，if 无法做到这一点。
+
+```kotlin
+var study: Study? = null
+
+fun doStudy() {
+    if (study != null) {
+        // error! Smart cast to 'Study' is impossible, because 'study' is a mutable property that could have been changed by this time
+        study.readBooks()
+        // error!
+        study.doHomework()
+    }
+}
+```
+因为全局变量的值随时都有可能被其他线程所修改，即时做了判空处理，任然无法保证 if 语句中的 study 变量没有空指针风险。
+
+使用 let 编译通过：
+
+```kotlin
+var study: Study? = null
+
+fun doStudy() {
+    study?.let {
+        it.readBooks()
+        it.doHomework()
+    }
+}
+```
+
+## Kotlin 中的小魔术
+
+### 字符串内嵌表达式
+
+Kotlin 允许在字符串里嵌入 **`${}`** 这种语法结构的表达式，并且在运行时使用表达式执行的结果代替这一部分内容。当表达式中仅有一个变量时，可以省略两边的大括号。
+
+```kotlin
+"hello, ${obj.name}!"
+"hello, $name!"
+```
+
+### 函数的参数默认值
+
+Kotlin 提供了给函数设定参数默认值的功能。
+
+```kotlin
+fun main() {
+    printParams(10)
+}
+
+fun printParams(num: Int, str: String = "hello") {
+    println("num is $num, str is $str")
+}
+```
+
+如果改成给第一个参数设定默认值，模仿刚才的写法，编译器会认为想把字符串赋值给第一个 num 参数，从而报类型不匹配的错误
+
+```kotlin
+fun main() {
+    // error! Type mismatch: inferred type is String but Int was expected
+    printParams("world")
+}
+
+fun printParams(num: Int = 5, str: String) {
+    println("num is $num, str is $str")
+}
+```
+
+Kotlin 提供了通过键值对的方式来传参，不必按照函数参数列表中的参数顺序
+
+```kotlin
+fun main() {
+    printParams(str = "world")
+    printParams(str = "world", num = 100)
+    printParams(num = 1000, str = "world")
+}
+
+fun printParams(num: Int = 5, str: String) {
+    println("num is $num, str is $str")
+}
+```
+
+
+
+函数设定参数默认值的功能可以在很大程度上替代次构造函数。给主构造器参数设定了默认值后，就可以用任何传参组合的方式来对类进行实例化。
