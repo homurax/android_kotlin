@@ -392,3 +392,234 @@ Java 和 Kotlin 函数可见性修饰符对照表
 |default|同一包路径下的类可见（默认）|无|
 |internal|无|同一模块中的类可见|
 
+### 数据类与单例类
+
+数据类通常需要重写 `equals()`、`hashCode()`、`toString()` 等方法，这些方法没有实际逻辑意义，只是为了让类、实体具有基本的功能。
+
+Kotlin 中在类前声明 **`data` **关键字，就表示希望这个类是一个**数据类**，会根据主构造函数中的参数将那些固定且无实际逻辑意义的方法自动生成。
+
+另外当一个类中没有任何代码时，可以将尾部的大括号省略。
+
+```kotlin
+data class CellPhone(val brand: String, val price: Double) 
+```
+
+Kotlin 中将 `class` 关键字换成 **`object`** 关键字既表示这是一个**单例类**。
+
+```kotlin
+object Singleton {
+    fun singletonTest() {
+        println("singletonTest is called.")
+    }
+}
+```
+
+## Lambda 编程
+
+### 集合的创建与遍历
+
+**List**
+
+`listof()`、`mutableListOf()`
+
+```kotlin
+val list1 = listOf("Apple", "Banana", "Orange", "Pear", "Grape")
+for (fruit in list1) {
+    println(fruit)
+}
+val list2 = mutableListOf("Apple", "Banana", "Orange", "Pear", "Grape")
+list2.add("Watermelon")
+for (fruit in list2) {
+    println(fruit)
+}
+```
+
+`listof()` 创建的是一个不可变集合，只能用于读取，不能对集合进行添加、修改或删除操作。
+
+`mutableListOf()` 创建的是一个可变集合。
+
+**Set**
+
+`setof()`、`mutableSetOf()`
+
+```kotlin
+val set1 = setOf("Apple", "Banana", "Orange", "Pear", "Grape")
+for (fruit in set1) {
+    println(fruit)
+}
+val set2 = mutableSetOf("Apple", "Banana", "Orange", "Pear", "Grape")
+set2.add("Watermelon")
+for (fruit in set2) {
+    println(fruit)
+}
+```
+
+**Map**
+
+kotlin 中不建议使用 `put()` 、`get()` 方法对 Map 进行添加和读取数据操作。
+
+```kotlin
+val map = HashMap<String, Int>()
+map.put("Apple", 1)
+map.put("Banana", 2)
+map.put("Orange", 3)
+map.put("Pear", 4)
+map.put("Grape", 5)
+```
+
+推荐使用类似于数组下标的语法结构。
+
+```kotlin
+map["Apple"] = 1
+map["Banana"] = 2
+map["Orange"] = 3
+map["Pear"] = 4
+map["Grape"] = 5
+// 读取
+val number = map["Apple"]
+```
+
+同样提供了一对 `mapOf()`、`mutableMapOf()` 函数用于简化操作。
+
+```kotlin
+val map = mapOf("Apple" to 1, "Banana" to 2, "Orange" to 3, "Pear" to 4, "Grape" to 5)
+for ((fruit, number) in map) {
+    println("fruit is $fruit, number is $number")
+}
+```
+
+to 并不是关键字，而是一个 **infix** 函数。
+
+### 集合的函数式 API
+
+Lambda 就是一小段可以作为参数传递的代码，通常不建议在 Lambda 表达式中编写太长的代码，否则可能会影响代码的可读性。
+
+Lambda 表达式的语法结构：
+
+```
+{参数名1: 参数类型, 参数名2: 参数类型 -> 函数体}
+```
+
+最后一行代码会自动作为 Lambda 表达式的返回值。
+
+以找到单词长度最长的水果为例
+
+```kotlin
+val list = listOf("Apple", "Banana", "Orange", "Pear", "Grape")
+val maxLengthFruit = list.maxBy({ fruit: String -> fruit.length })
+println(maxLengthFruit)
+```
+
+
+
+并不总是需要使用 Lambda 表达式完整的语法结构，有很多种简化的写法。
+
+maxBy 就是一个普通函数，只不过它接收的是一个 Lambda 类型的参数，并且在遍历集合时将每次遍历的值作为参数传递给 Lambda 表达式。
+
+Kotlin 规定，当 Lambda 参数是函数最后一个参数时，可以将 Lambda 参数移到函数括号的外面。
+
+```kotlin
+val maxLengthFruit = list.maxBy() { fruit: String -> fruit.length }
+```
+
+Lambda 参数是函数唯一一个参数的话，可以将函数的括号省略。
+
+```kotlin
+val maxLengthFruit = list.maxBy { fruit: String -> fruit.length }
+```
+
+由于 Kotlin  具有出色的类型推导机制，Lambda 表达式中的参数列表绝大多数情况下不必声明参数类型。
+
+```kotlin
+val maxLengthFruit = list.maxBy { fruit -> fruit.length }
+```
+
+当 Lambda 表达式的参数列表只有一个参数时，也不必声明参数名，可以使用 `it` 关键字来代替。
+
+```kotlin
+val maxLengthFruit = list.maxBy { it.length }
+```
+
+**map函数**
+
+用于将集合中的每个元素都映射成另外的一个值。
+
+```kotlin
+// 变为大写
+val newList = list.map { it.toUpperCase() }
+```
+
+**filter函数**
+
+用来过滤集合中的数据。
+
+```kotlin
+val newList = list.filter { it.length <= 5 }.map { it.toUpperCase() }
+```
+
+**any 和 all 函数**
+
+any 函数用于判断集合中是否至少存在一个元素满足指定条件。
+
+all 函数用于判断集合中是否所有元素都满足指定条件。
+
+```kotlin
+val anyResult = list.any { it.length <= 5 }
+val allResult = list.all { it.length <= 5 }
+```
+
+### 调用 Java 方法时的函数式 API 使用
+
+Kotlin 中调用 Java 方法，并且该方法接收一个 **Java 单抽象方法接口**参数，就可以使用函数式 API。
+
+ Java 单抽象方法接口指的是接口中只有一个待实现方法，如果有多个待实现方法，则为无法使用。
+
+*Kotlin 中有专门的高阶函数来实现更加强大的自定义函数式 API 使用。*
+
+以 Kotlin 中 start 一个线程为例
+
+```kotlin
+Thread(object : Runnable {
+    override fun run() {
+        println("Thread is running.")
+    }
+}).start()
+```
+
+目前只是简单把 Java 中的写法使用 Kotlin 写了一遍，Kotlin 完全舍弃了 new 关键字，因此创建匿名类实例的时候就不能再用 new 了，而是改用了 object 。
+
+Thread 类的构造方法就符合 Java 函数式 API 的使用条件
+
+```kotlin
+Thread(Runnable {
+    println("Thread is running.")
+}).start()
+```
+
+因为 Runnable 中只有一个待实现的方法，即使没有显式的重写 `run() ` 方法，Kotlin 也能明白 Runnable 后面的 Lambda 表达式就是要在 `run() ` 方法中实现的内容。
+
+ 和 Kotlin 中函数式API 使用类似，当 Lambda  表达式是方法的最后一个参数时，可以将 Lambda 表达式移到方法的括号外面，同时 Lambda 表达式还是方法的唯一一个参数，还可以将方法的括号省略。
+
+```kotlin
+Thread { println("Thread is running.") }.start()
+```
+
+不过在 Java 8 后同样的逻辑 Java 代码也可以很简略，比较熟悉的应该都很清楚了。
+
+```java
+new Thread(new Runnable() {
+    @Override
+    public void run() {
+        System.out.println("Thread is running.")
+    }
+}).start();
+
+new Thread(() -> System.out.println("Thread is running.")).start();
+```
+
+
+
+在满足方法接收的是 Java 单抽象方法接口参数时，于方法而言，知道接收的是什么，所以不用写具体的接口名。对接口而言，因为接口中只有一个待实现方法，所以不需要写出方法名，不需要显式的重写，直接在大括号中写出接口中方法的逻辑即可。
+
+因为后面用到的 Android SDK 还是用 Java 语言编写的，所以在 Kotlin 中调用这些 SDK 接口时，就可能会用到这种 Java 函数式 API 的写法。
+
