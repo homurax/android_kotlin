@@ -4,3 +4,5 @@
 
 [第 02 章 - 入门 Kotlin 编程](/note/chapter02.md)
 
+[第 03 章 - 探究 Activity](/note/chapter03.md)
+
