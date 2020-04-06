@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">ActivityLifeCycleTest</string>
+    <string name="this_is_a_normal_activity">This is a normal activity</string>
+    <string name="this_is_a_dialog_activity">This is a dialog activity</string>
+    <string name="start_normalactivity">Start NormalActivity</string>
+    <string name="start_dialogactivity">Start DialogActivity</string>
+</resources>

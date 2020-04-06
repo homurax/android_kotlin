@@ -124,3 +124,15 @@ Activity 类中定义了7 个回调方法，覆盖了 Activity 生命周期的�
 
 ![](../images/chapter02/activity_lifecycle.png)
 
+### Activity 被回收了时如何恢复数据
+
+Activity 中还提供了一个 `onSaveInstanceState()` 回调方法，这个方法可以保证在 Activity 被回收之前一定会被调用，因此我们可以通过这个方法来解决问题。
+
+Bundle 提供了一系列的方法用于保存数据。
+
+`onCreate()` 方法中的 Bundle 类型的参数会带有之前所保存的全部数据，取值恢复即可。
+
+Intent 还可以结合 Bundle 一起用于传递数据，首先可以把需要传递的数据都保存在 Bundle 对象中，然后再将 Bundle 对象存放在 Intent 里。到了目标活动之后先从 Intent 中取出 Bundle，再从 Bundle 中一一取出数据。
+
+## Activity 的启动模式
+
