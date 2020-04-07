@@ -17,7 +17,8 @@
                 <data android:scheme="https" />
             </intent-filter>
         </activity>
-        <activity android:name=".SecondActivity">
+        <activity android:name=".SecondActivity"
+            android:launchMode="singleInstance">
             <intent-filter>
                 <action android:name="com.homurax.activitytest.ACTION_START" />
 
@@ -27,6 +28,7 @@
         </activity> <!-- 给主 Activity 指定的 label 不仅会成为标题栏中的内容 还会成为 Launcher 中应用程序显示的名称 -->
         <activity
             android:name=".FirstActivity"
+            android:launchMode="singleTask"
             android:label="This is FirstActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

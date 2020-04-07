@@ -136,3 +136,163 @@ Intent 还可以结合 Bundle 一起用于传递数据，首先可以把需要�
 
 ## Activity 的启动模式
 
+启动模式一共有4 种，分别是 **standard**、**singleTop**、**singleTask** 和 **singleInstance**，可以在`AndroidManifest.xml`中通过给`<activity>`标签指定`android:launchMode`属性来选择启动模式。
+
+### standard
+
+standard 是 Activity 默认的启动模式，在不进行显式指定的情况下，所有 Activity 都会自动使用这种启动模式。每当启动一个新的 Activity，它就会在返回栈中入栈，并处于栈顶的位置。对于使用 standard 模式的 Activity，系统不会在乎这个 Activity 是否已经在返回栈中存在，每次 Activity 都会创建该活动的一个新的实例。
+
+![](../images/chapter02/standard.png)
+
+### singleTop
+
+当活动的启动模式指定为 singleTop，在启动 Activity 时如果发现返回栈的栈顶已经是该 Activity，则认为可以直接使用它，不会再创建新的 Activity 实例。未处于栈顶位置时，还是会创建新的实例的。
+
+```xml
+<activity
+    android:name=".FirstActivity"
+    android:launchMode="singleTop"
+    android:label="This is FirstActivity">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+    </intent-filter>
+</activity>
+```
+
+![](../images/chapter02/singleTop.png)
+
+### singleTask
+
+每次启动该 Activity 时系统首先会在返回栈中检查是否存在该 Activity 的实例，如果发现已经存在则直接使用该实例，并把在这个 Activity 之上的所有活动统统出栈，如果没有发现就会创建一个新的 Activity 实例。
+
+![](../images/chapter02/singleTask.png)
+
+### singleInstance
+
+指定为 singleInstance 模式的 Activity 会启用一个新的返回栈来管理这个 Activity（其实如果 singleTask 模式指定了不同的 taskAffinity，也会启动一个新的返回栈）。
+
+![](../images/chapter02/singleInstance.png)
+
+## Activity 的最佳实践
+
+### 知晓当前是在那一个 Activity
+
+通过抽象出 BaseActivity，来日志打印出类名，从而容易判断出是哪一个活动。
+
+Kotlin 中的 `javaClass` 表示获取当前实例的 Class 对象，相当于在 Java 中调用 `getClass()`。
+
+Kotlin 中的 `BaseActivity::class.java` 表示获取 BaseActivity 类的 Class 对象，相当于在 Java 中调用 `BaseActivity.class`。
+
+### 随时随地退出程序
+
+通过 BaseActivity、ActivityCollector 来掌控所有活动的管理。
+
+```kotlin
+object ActivityCollector {
+
+    private val activities = ArrayList<Activity>();
+
+    fun addActivity(activity: Activity) {
+        activities.add(activity)
+    }
+
+    fun removeActivity(activity: Activity) {
+        activities.remove(activity)
+    }
+
+    fun finishAll() {
+        for (activity in activities) {
+            if (!activity.isFinishing) {
+                activity.finish()
+            }
+        }
+        activities.clear()
+    }
+
+}
+
+@SuppressLint("Registered")
+open class BaseActivity : AppCompatActivity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        Log.d("BaseActivity", javaClass.simpleName)
+        ActivityCollector.addActivity(this)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        ActivityCollector.removeActivity(this)
+    }
+}
+
+class ThirdActivity : BaseActivity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        Log.d("ThirdActivity", "Task is is $taskId")
+        setContentView(R.layout.third_layout)
+
+        button3.setOnClickListener {
+            ActivityCollector.finishAll()
+            // kill 当前进程
+            // killProcess() 只能用于杀掉当前程序的进程 不能用于杀掉其他程序
+            android.os.Process.killProcess(android.os.Process.myPid())
+        }
+    }
+}
+```
+
+### 启动 Activity 的最佳写法
+
+为自己负责的活动编写 `actionStart` 方法，方便别人启动以及知悉必要参数。
+
+```kotlin
+class SecondActivity : BaseActivity() {
+    ...
+    companion object {
+        fun actionStart(context: Context, data1: String, data2: String) {
+            val intent = Intent(context, SecondActivity::class.java)
+            intent.putExtra("param1", data1)
+            intent.putExtra("param2", data2)
+            context.startActivity(intent)
+        }
+    }
+}
+```
+
+Kotlin 规定，所有定义在 `companion object` 中的方法都可以使用类似于 Java 静态方法调用的形式调用。
+
+## Kotlin : 标准函数和静态方法
+
+### 标准函数 with、run、apply
+
+之前已经提到了 let 这个标准函数，它的主要作用就是配合 `?.` 操作符来进行辅助判空处理。
+
+#### with
+
+with 函数接收两个参数：第一个参数可以是一个任意类型的对象，第二个参数是一个 Lambda 表达式。
+
+with 函数会在 Lambda 表达式中提供第一个参数对象的上下文，并使用 Lambda 表达式中的最后一行代码最为返回值返回。
+
+```kotlin
+val result = with(obj) {
+    // 这里是 obj 的上下文
+    "value" // with 函数的返回值
+}
+```
+
+```kotlin
+val list = listOf("Apple", "Banana", "Orange", "Pear", "Grape")
+val result = with(StringBuilder()) {
+    append("Start eating fruits.\n")
+    for (fruit in list) {
+        append(fruit).append("\n")
+    }
+    append("Ate all fruits.\n")
+    toString()
+}
+println(result)
+```
+

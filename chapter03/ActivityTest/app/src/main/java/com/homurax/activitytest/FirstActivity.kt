@@ -11,15 +11,16 @@ import android.view.MenuItem
 import android.widget.Toast
 import kotlinx.android.synthetic.main.first_layout.*
 
-class FirstActivity : AppCompatActivity() {
+class FirstActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d("FirstActivity", "Task is is $taskId")
         // 给当前的 Activity 加载一个布局
         // 项目中添加的任何资源都会在R文件中生成一个相应的资源 id
         setContentView(R.layout.first_layout)
         // val button1: Button = findViewById(R.id.button1)
-        //
+
         button1.setOnClickListener {
             // Toast.makeText(this, "You clicked Button1", Toast.LENGTH_SHORT).show()
 
@@ -44,18 +45,30 @@ class FirstActivity : AppCompatActivity() {
             // startActivity(intent)
 
             // 启动的 Activity 在销毁时返回一个结果给上一个 Activity
-            val intent = Intent(this, SecondActivity::class.java)
+            // val intent = Intent(this, SecondActivity::class.java)
             // requestCode 请求码唯一即可
-            startActivityForResult(intent, 1)
+            // startActivityForResult(intent, 1)
+
+            // standard
+            // val intent = Intent(this, FirstActivity::class.java)
+            // singleTop
+            val intent = Intent(this, SecondActivity::class.java)
+            startActivity(intent)
         }
+    }
+
+    override fun onRestart() {
+        super.onRestart()
+        Log.d("FirstActivity", "onRestart")
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
             1 -> if (resultCode == Activity.RESULT_OK) {
-                val returnData = data?.getStringExtra("return_data")
-                Log.d("FirstActivity", returnData)
+                data?.getStringExtra("return_data")?.let {
+                    Log.d("FirstActivity", it)
+                }
             }
         }
     }
