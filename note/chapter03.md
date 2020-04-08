@@ -296,3 +296,120 @@ val result = with(StringBuilder()) {
 println(result)
 ```
 
+#### run
+
+run 函数的用法和 with 函数非常类似，只是有一些语法改动。run 函数不能直接调用，一定要调用某个对象的 run 函数才可以；其次 run 函数只接收一个 Lambda 参数， 并且会在 Lambda 表达式中提供调用对象的上下文。其他与 with 函数相同。
+
+```kotlin
+val result = obj.run {
+    // 这里是 obj 的上下文
+    "value" // run 函数的返回值
+}
+```
+
+```kotlin
+val list = listOf("Apple", "Banana", "Orange", "Pear", "Grape")
+val result = StringBuilder().run {
+    append("Start eating fruits.\n")
+    for (fruit in list) {
+        append(fruit).append("\n")
+    }
+    append("Ate all fruits.\n")
+    toString()
+}
+println(result)
+```
+
+#### apply
+
+apply 函数与 run 函数也非常类似的，都是在某个对象上调用，接收一个 Lambda 参数，并且会在 Lambda 表达式中提供调用对象的上下文。区别在于 apply 函数无法指定返回值，而是会自动返回调用对象本身。
+
+```kotlin
+val result = obj.apply {
+    // 这里是 obj 的上下文
+}
+// result == obj
+```
+
+```kotlin
+val list = listOf("Apple", "Banana", "Orange", "Pear", "Grape")
+val result = StringBuilder().apply {
+    append("Start eating fruits.\n")
+    for (fruit in list) {
+        append(fruit).append("\n")
+    }
+    append("Ate all fruits.\n")
+}
+println(result.toString())
+```
+
+### 定义静态代码
+
+Kotlin 极度弱化了静态方法这个概念，因为提供了更好的语法特性，就是单例类。
+
+使用单例类 `object` 的写法会将整个类中的所有方法全部变成类似于静态方法的调用方式，如果只希望类中某一个方法变成静态方法的调用方式，就可以使用 **`companion object`** 了。
+
+```kotlin
+class Util {
+    fun doAction1(){
+        println("doAction1（）")
+    }
+    
+    companion object {
+        fun doAction2(){
+            println("doAction2（）")
+        }
+    }
+}
+```
+
+`doAction2()` 其实也不是静态方法，`companion object` 关键字会在 Util 类的内部创建一个伴生类，`doAction2()` 就是定义在伴生类里面的实例方法。Kotlin 会保证 Util 类内部始终是有一个伴生类对象。
+
+Kotlin 确实没有直接定义静态方法的关键字，如果确实需要定义真正的静态方法，Kotlin 仍让提供了两种实现方式：注解和顶层方法。
+
+#### 注解
+
+`companion object` 只是在语法的形式上模仿了静态方法的调用方式，并不是真正的静态方法。如果在 Java 代码中以静态方法的形式去调用的话，会发现方法并不存在。但是如果为`companion object` 中的方法加上 `@JvmStatic` 注解，那么 Kotlin 编译器就会将这些方法编译成真正的静态方法。
+
+```kotlin
+class Util {
+    fun doAction1(){
+        println("doAction1（）")
+    }
+
+    companion object {
+        @JvmStatic
+        fun doAction2(){
+            println("doAction2（）")
+        }
+    }
+}
+```
+
+`@JvmStatic` 注解只能加载单例类或 `companion object` 中的方法上，如果加载普通方法上，会提示语法错误。
+
+加上注解后，在 Java 中也可以使用 `Util.doAction2()` 的方式来调用了。
+
+#### 顶层方法
+
+ 顶层方法指的是那些没有定义在任何类中的方法。Kotlin 编译器会将所有的顶层方法全部编译成静态方法，因此只要定义了一个顶层方法，那么它就一定是静态方法。
+
+在 Kotlin 代码中，所有的顶层方法都可以在任何位置被直接调用，不用管包名路径，也不用创建实例。
+
+Helper.kt
+
+```kotlin
+fun doSomething() {
+    println("doSomething()...")
+}
+```
+
+假设创建的 Kotlin 文件名叫做 `Helper.kt`，Kotlin 编译器会自动创建一个叫做 `HelperKt` 的 Java 类，在 Java 中使用 `HelperKt.doSomething()` 的写法来调用即可。
+
+```Java
+public class StaticTest {
+    public static void main(String[] args) {
+        HelperKt.doSomething();
+    }
+}
+```

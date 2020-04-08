@@ -12,9 +12,10 @@ class SecondActivity : BaseActivity() {
 
     companion object {
         fun actionStart(context: Context, data1: String, data2: String) {
-            val intent = Intent(context, SecondActivity::class.java)
-            intent.putExtra("param1", data1)
-            intent.putExtra("param2", data2)
+            val intent = Intent(context, SecondActivity::class.java).apply {
+                putExtra("param1", data1)
+                putExtra("param2", data2)
+            }
             context.startActivity(intent)
         }
     }
