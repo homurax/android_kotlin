@@ -6,3 +6,5 @@
 
 [第 03 章 - 探究 Activity](/note/chapter03.md)
 
+[第 04 章 - UI 开发](/note/chapter04.md)
+
