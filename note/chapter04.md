@@ -138,7 +138,34 @@ View 是 Android 中最基本的一种 UI 组件，它可以在屏幕上绘制�
 
 而 ViewGroup 则是一种特殊的 View，它可以包含很多子 View 和子 ViewGroup，是一个用于放置控件和布局的容器。
 
+### 引入布局
 
+```xml
+<include layout="@layout/title" />
+```
+
+### 创建自定义控件
+
+```kotlin
+class TitleLayout(context: Context, attrs: AttributeSet) : LinearLayout(context, attrs) {
+
+    init {
+        // 对标题栏布局进行动态加载 构建 LayoutInflater 对象，动态加载布局文件
+        // 传入布局文件id 和 父布局
+        LayoutInflater.from(context).inflate(R.layout.title, this)
+        titleBack.setOnClickListener {
+            // Kotlin 中的类型强制转换使用的关键字是 as
+            val activity = context as Activity
+            activity.finish()
+        }
+        titleEdit.setOnClickListener {
+            Toast.makeText(context, "You clicked Edit button.", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+```
+
+## ListView
 
 
 
