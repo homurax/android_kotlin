@@ -169,7 +169,47 @@ class TitleLayout(context: Context, attrs: AttributeSet) : LinearLayout(context,
 
 已使用 adapter 的形式给 ListView 提供数据。
 
-**repeat， Kotlin 中的标准函数，它允许传入一个数值 n，然后会把 Lambda 表达式中的内容执行 n 编。**
+**repeat， Kotlin 中的标准函数，它允许传入一个数值 n，然后会把 Lambda 表达式中的内容执行 n 遍。**
+
+ArrayAdapter 使用中，使用 inner class ViewHolder 来缓存 ImageView 和 TextView 。
+
+ViewHolder 实例绑定在 View 的 tag 上。
+
+## RecyclerView
+
+```
+implementation "androidx.recyclerview:recyclerview:1.1.0"
+```
+
+纵向滚动、横向滚动、瀑布流布局。
+
+RecyclerView.Adapter 使用中，同样使用 inner class ViewHolder 来缓存 ImageView 和 TextView 。ViewHolder 继承了 RecyclerView.ViewHolder 。
+
+`onCreateViewHolder()` 中创建 ViewHolder 实例，注册点击事件。
+
+`onBindViewHolder()` 中对 RecyclerView 子项赋值，每个子项滚动到屏幕内时执行。
+
+`getItemCount()` 用于获取子项数量。
+
+
+
+ListView 的布局排列是由自身去管理的，而 RecyclerView 则将这个工作交给了 LayoutManager。
+
+LayoutManager 中制定了一套可扩展的布局排列接口，子类只要按照接口的规范来实现，就能定制出各种不同排列方式的布局了。
+
+LinearLayoutManager 可以用于实现线性布局。
+
+GridLayoutManager 可以用于实现网格布局。
+
+StaggeredGridLayoutManager 可以用于实现瀑布流布局。
+
+
+
+
+
+
+
+
 
 
 
