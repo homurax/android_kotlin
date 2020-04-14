@@ -167,9 +167,9 @@ class TitleLayout(context: Context, attrs: AttributeSet) : LinearLayout(context,
 
 ## ListView
 
+已使用 adapter 的形式给 ListView 提供数据。
 
-
-
+**repeat， Kotlin 中的标准函数，它允许传入一个数值 n，然后会把 Lambda 表达式中的内容执行 n 编。**
 
 
 
