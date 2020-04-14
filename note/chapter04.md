@@ -191,6 +191,8 @@ RecyclerView.Adapter 使用中，同样使用 inner class ViewHolder 来缓存 I
 
 `getItemCount()` 用于获取子项数量。
 
+`getItemViewType()` 返回当前 position 对应的类型。
+
 
 
 ListView 的布局排列是由自身去管理的，而 RecyclerView 则将这个工作交给了 LayoutManager。
@@ -215,17 +217,51 @@ StaggeredGridLayoutManager 可以用于实现瀑布流布局。
 
 **使用 const 定义常量，只有在单例类、companion object 或顶层方法中才可以使用 const 关键字。**
 
+## Kotlin : 延迟初始化和密封类
 
+## 对变量延迟初始化
 
+由于全局变量 adapter 是在 `onCreate()` 方法中初始化的，所以不得不先将其赋值为 null，同时把它的类型声明成 `MsgAdapter?` 。其他方法中调用 adapter 时仍然要进行判空处理。
 
+使用 **`lateinit`** 关键字延迟初始化，它可以告诉 Kotlin 编译器，会在之后对其初始化，就不用赋值为 null 了，同时类型声明也就可以改为 `MsgAdapter` 了，其他方法中也就不再需要空值处理。
 
+但是如果在变量还没有初始化的情况下就直接使用它，程序一定会崩溃，并且抛出一个 `UninitializedPropertyAccessException` 异常。
 
+可以通过 `::adapter.isInitialized` 来判断 adapter  是否已经初始化。
 
+### 使用密封类优化代码
 
+```kotlin
+interface Result
+class Success(val msg: String) : Result
+class Failure(val error: Exception) : Result
 
+fun getResultMsg(result: Result) = when (result) {
+    is Success -> result.msg
+    is Failure -> "Error is ${result.error.message}"
+    else -> throw IllegalArgumentException()
+}
+```
 
+如果缺少 else 条件，Kotlin 编译器会认为这里缺少条件分支，无法编译通过。实际上 Result 的执行结果只可能是 Success 或者 Failure，else 条件是永远走不到的。这里抛出异常只是为了满足 Kotlin 编译器语法检查的需要。
 
+此时 else 还有一个潜在风险，如果新增 Result 实现类，但是忘记在 `getResultMsg()` 中添加分支，就会进入 else 分支抛出异常。
 
+Kotlin 的密封类可以很好地解决这个问题，密封类的关键字是 **`sealed class`** 。
 
+```kotlin
+sealed class Result
+class Success(val msg: String) : Result()
+class Failure(val error: Exception) : Result()
 
+fun getResultMsg(result: Result) = when (result) {
+    is Success -> result.msg
+    is Failure -> "Error is ${result.error.message}"
+}
+```
 
+密封类是一个可继承的类，因此在继承它的时候需要在后面加上一对括号。
+
+当 when 语句中传入一个密封类变量作为条件的时候，Kotlin 会自动检查该密封类有那些子类，并强制要求将每一个子类所对应的条件全部处理。
+
+密封类及其所有子类只能定义在同一个文件的顶层位置，不能嵌套在其他类中，这是密封类底层的实现机制所限制的。
