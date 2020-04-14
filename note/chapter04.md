@@ -80,3 +80,81 @@ AlertDialog.Builder(this).apply {
 }
 ```
 
+## 三种基本布局
+
+布局是一种可用于放置很多控件的容器，它可以按照一定的规律调整内部控件的位置。布局的内部除了放置控件外，也可以放置布局，可以嵌套。
+
+![](../images/chapter04/layout_controls.png)
+
+### LinearLayout
+
+LinearLayout 会将它所包含的控件在线性方向上依次排列。
+
+`android:orientation` 指定排列方向是 `vertical` 还是 `horizontal` 。
+
+如果 LinearLayout 的排列方向是 horizontal，内部的控件就绝对不能将宽度指定为 match_parent，因为这样的话，单独一个控件就会将整个水平方向占满，其他的控件就没有可放置的位置了。同样的道理，如果 LinearLayout 的排列方向是 vertical，内部的控件就不能将高度指定为 match_parent 。
+
+`android:gravity` 用于指定文字在控件中的对齐方式。
+
+`android:layout_gravity` 用于指定控件在布局中的对齐方式。
+
+当 LinearLayout 的排列方向是 horizontal 时，只有垂直方向上的对齐方式才会生效，因为此时水平方向上的长度是不固定的，每添加一个控件，水平方向上的长度都会改变，因而无法指定该方向上的对齐方式。
+
+同样的道理，当 LinearLayout 的排列方向是 vertical 时，只有水平方向上的对齐方式才会生效。
+
+`android:layout_weight` 可以用于按照比例分配屏幕宽度，比较规范的写法是使用 `android:layout_weight` 时，同时指定 `android:layout_width="0dp"` 。
+
+### RelativeLayout 
+
+RelativeLayout 可以通过相对定位的方式让控件出现在布局的任何位置。RelativeLayout 中的属性非常多。
+
+布局属性都记录在 [`RelativeLayout.LayoutParams`](https://developer.android.com/reference/android/widget/RelativeLayout.LayoutParams) 。
+
+相对于父布局定位、相对于控件定位。
+
+- `android:layout_alignParentTop` 使该视图的**顶部边缘**与父视图的顶部边缘匹配。
+- `android:layout_alignParentBottom` 使该视图的**底部边缘**与父视图的底部边缘匹配。
+- `android:layout_centerInParent` 将此子级**在其父级中水平和垂直居中**。
+- `android:layout_alignParentStart` 使该视图的**起始边缘**与父视图的起始边缘匹配。
+- `android:layout_alignParentEnd` 使该视图的**末端边缘**与父视图的末端边缘匹配。 
+- `android:layout_alignParentLeft` 使该视图的**左边缘**与父视图的左边缘匹配。
+- `android:layout_alignParentRight` 使该视图的**右边缘**与父视图的右边缘匹配。
+- `android:layout_above` 将此视图的**底边边缘**定位在给定的锚视图ID**上方**。
+- `android:layout_below` 将此视图的**顶部边缘**定位在给定的锚视图ID**之下**。
+- `android:layout_toStartOf` 将此视图的**末端边缘**定位到给定锚视图ID的起点。
+- `android:layout_toEndOf` 将此视图的**开始边缘**定位到给定锚视图ID的末尾。
+- `android:layout_toLeftOf` 将此视图的**右边缘**定位到给定的锚视图ID的左侧。
+- `android:layout_toRightOf` 将此视图的**左边缘**定位在给定的锚视图ID的右侧。
+
+### **FrameLayout**
+
+FrameLayout 所有的控件都会默认摆放在布局的左上角。
+
+## 创建自定义控件
+
+所有控件都是直接或间接继承自 View 的，所有的布局都是直接或间接继承自 ViewGroup 的。
+
+View 是 Android 中最基本的一种 UI 组件，它可以在屏幕上绘制一块矩形区域，并能响应这块区域的各种事件，因此，我们使用的各种控件其实就是在 View 的基础之上又添加了各自特有的功能。
+
+而 ViewGroup 则是一种特殊的 View，它可以包含很多子 View 和子 ViewGroup，是一个用于放置控件和布局的容器。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
