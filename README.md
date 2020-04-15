@@ -8,3 +8,5 @@
 
 [第 04 章 - UI 开发](/note/chapter04.md)
 
+[第 05 章 - 探究 Fragment](/note/chapter05.md)
+

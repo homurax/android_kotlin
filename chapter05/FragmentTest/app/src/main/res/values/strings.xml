@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">FragmentTest</string>
+    <string name="button">Button</string>
+    <string name="this_is_right_fragment">This is right fragment</string>
+    <string name="this_is_another_right_fragment">This is another right fragment</string>
+</resources>
