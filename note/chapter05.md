@@ -173,19 +173,38 @@ Android 中一些常见的 **qualifier** 表示。
 
 当程序运行在屏幕宽度大于等于 600dp 的设备上时，会加载 `layout-sw600dp/activity_main` 布局，当程序运行在屏幕宽度小于 600dp 的设备上时，则仍然加载默认的 `layout/activity_main` 布局。
 
+## Fragment 的最佳实践
 
+```
+MainActivity 
+    - activity_main.xml(layout)                       startActivity()
+                    - <fragment> NewsTitleFragment-------------------------
+                                          | - news_title_frag.xml         |
+                                          |  - <RecyclerView>             |
+                                          | - news_item.xml               |
+                                          |  - <TextView newsTitle>       |
+                                          |                               |
+                                          |                               |
+                                          |                NewsContentActivity
+                                          |                 - activity_news_content.xml
+                                          |                               |
+    - activity_main.xml(layout-sw600dp)   |                               |
+                    - <fragment> NewsContentFragment ---------------------|
+                                   - news_content_frag.xml
+                                     - <TextView newsTitle>
+                                     - <TextView newsContent>
+```
 
+通过限定符动态加载 `/layout/activity_main.xml` 或 `/layout-sw600dp/activity_main.xml` 。
 
+普通分辨率下加载展示 title 的 fragment，高分辨率下同时加载 title 、content 两个 fragment。
 
+title 的 fragment 样式为 `news_title_frag.xml` 使用了 RecyclerView ，具体样式在 `news_item.xml` 中。
 
+content 的 fragment 样式为 `news_content_frag.xml` 。
 
+title 的点击事件中通过判断单页还是双页，执行不同的操作。
 
+对于普通分辨率模式，启动 NewsContentActivity，样式 `activity_news_content.xml` 中使用的还是 content 的 fragment。
 
-
-
-
-
-
-
-
-
+对于高分辨率模式，直接刷新 content 的 fragment 中的内容即可。
