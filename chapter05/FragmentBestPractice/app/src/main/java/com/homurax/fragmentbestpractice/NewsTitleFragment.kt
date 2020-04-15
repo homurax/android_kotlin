@@ -78,11 +78,6 @@ class NewsTitleFragment : Fragment() {
     }
 
     private fun getRandomLengthString(str: String): String {
-        val n = (1..20).random()
-        val builder = StringBuilder()
-        repeat(n) {
-            builder.append(str)
-        }
-        return builder.toString()
+        return str * (1..20).random()
     }
 }
