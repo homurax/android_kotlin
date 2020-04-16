@@ -100,25 +100,220 @@ override fun onReceive(context: Context, intent: Intent) {
 
 始终只需要保证只有处于栈顶的 Activity 才能接收到强制下线广播，非栈顶的 Activity 不应该也没必要接收这条广播，所以写在  `onResume()` 和 ` onPause()` 方法里就可以很好的解决这个问题，当一个 Activity 失去栈顶位置时就会自动取消 BroadcastReceiver 的注册。
 
+## Kotlin: 高阶函数
+
+### 高阶函数
+
+像接收 Lambda 参数的函数可以称为具有函数式编程风格的 API，如果想要定义自己的函数式 API，那就需要借助高阶函数来实现了。
+
+**如果一个函数接收另一个函数作为参数，或者返回值的类型是另一个函数，那么该函数就称为高阶函数。**
 
 
 
+函数类型基本规则：
+
+```
+(String, Int) -> Unit
+```
+
+`->` 左边的部分用来声明该函数接收什么参数，多个参数用逗号隔开，如果不接受任何参数，写一对空括号就可以了。
+
+`->` 右边的部分用于声明该函数的返回值是什么类型，如果没有返回值就使用 Unit，它大致上相当于 Java 中的 void。
+
+将函数类型添加到某个函数的参数声明或者返回值声明上，那么这个函数就是一个高阶函数了：
+
+```kotlin
+fun example(func: (String, Int) -> Unit) {
+    func("hello", 123)
+}
+```
+
+**高阶函数允许让函数类型的参数决定函数的执行逻辑。**
+
+```kotlin
+fun num1AndNum2(num1: Int, num2: Int, operation: (Int, Int) -> Int): Int {
+    val result = operation(num1, num2)
+    return result
+}
+
+fun plus(num1: Int, num2: Int): Int {
+    return num1 + num2
+}
+
+fun minus(num1: Int, num2: Int): Int {
+    return num1 - num2
+}
+
+val result1 = num1AndNum2(num1, num2, ::plus)
+val result2 = num1AndNum2(num1, num2, ::minus)
+```
+
+`::plus` 是一种函数引用方式的写法，表示将 `plus()` 函数作为参数传递给 `num1AndNum2()` 函数。
+
+**Kotlin 支持多种方式来调用高阶函数，比如 Lambda 表达式、匿名函数、成员引用等。**
+
+```kotlin
+val result1 = num1AndNum2(num1, num2) { n1, n2 ->
+    n1 + n2
+}
+val result2 = num1AndNum2(num1, num2) { n1, n2 ->
+    n1 - n2
+}
+```
+
+在函数类型的前面加上了一个 `StringBuilder.` 的语法结构。
+
+这是定义高阶函数完整的语法规则，**在函数类型前面加上 `ClassName.` 就表示这个函数类型是定义在哪个类当中**。
+
+这样当调用 build 函数时传入的 Lambda 表达式将会自动拥有 StringBuilder 的上下文。
+
+同时这也是 apply 函数的实现方式。
+
+```kotlin
+fun StringBuilder.build(block: StringBuilder.() -> Unit): StringBuilder {
+    block()
+    return this
+}
+
+val list = listOf("Apple", "Banana", "Orange", "Pear", "Grape")
+val result = StringBuilder().build {
+    append("Start eating fruits.\n")
+    for (fruit in list) {
+        append(fruit).append("\n")
+    }
+    append("Ate all fruits.")
+}
+```
+
+### 内联函数
+
+Lambda 表达式在底层被转换成了匿名类的实现方式。Kotlin 提供了**内联函数**的功能，它可以将使用 Lambda 表达式带来的运行时开销完全消除。
+
+内联函数只需要在定义高阶函数时加上 **`inline`** 关键字声明即可。
+
+Kotlin 编译器会将内联函数中的代码在编译的时候自动替换到调用它的地方，这样也就不存在运行时的开销了。
+
+首先，Kotlin 编译器会将 Lambda 表达式中的代码替换到**函数类型参数调用的地方**。
+
+![](../images/chapter06/inline01.png)
+
+接下来，再将内联函数中的全部代码替换到**函数调用的地方**。
+
+![](../images/chapter06/inline02.png)
+
+最终代码被替换为如下的样子。
+
+![](../images/chapter06/inline03.png)
+
+### noinline 与 crossinline
+
+#### noinline 
+
+一个高阶函数中如果接收了两个或者更多函数类型的参数，并且给高阶函数加上了 inline 关键字，那么 Kotlin 编译器会自动将所有引用的 Lambda 表达式全部进行内联。
+
+如果只想内联其中的一个 Lambda 表达式，可以使用 **`noinline`** 关键字。
+
+```kotlin
+inline fun inlineTest(block: () -> Unit, noinline block2: () -> Unit) {}
+```
+
+内联的函数类型参数在编译的时候会被进行代码替换，因此它没有真正的参数属性。
+
+非内联的函数类型参数可以自由地传递给其他任何函数，因为它就是一个真实的参数，而内联的函数类型参数只允许传递给另外一个内联函数，这也是它最大的局限性。
+
+内联函数和非内联函数还有一个重要的区别，内联函数所引用的 Lambda 表达式中是可以使用 return 关键字来进行函数返回的，而**非内联函数只能进行局部返回**。
+
+```kotlin
+fun printString(str: String, block: (String) -> Unit) {
+    println("printString begin")
+    block(str)
+    println("printString end")
+}
+
+fun main() {
+    println("main start")
+    var str = ""
+    printString(str) { s ->
+        println("lambda start")
+        if (s.isEmpty()) {
+            return@printString
+        }
+        println(s)
+        println("lambda end")
+    }
+    println("main end")
+}
+```
+
+**`return@printString` 的写法表示进行局部返回，并且不会再执行 Lambda 表达式的剩余部分代码。**
+
+输出：
+
+```
+main start
+printString begin
+lambda start
+printString end
+main end
+```
 
 
 
+```kotlin
+inline fun printString(str: String, block: (String) -> Unit) {
+    println("printString begin")
+    block(str)
+    println("printString end")
+}
 
+fun main() {
+    println("main start")
+    var str = ""
+    printString(str) { s ->
+        println("lambda start")
+        if (s.isEmpty()) {
+            return
+        }
+        println(s)
+        println("lambda end")
+    }
+    println("main end")
+}
+```
 
+此时 `printString()` 函数为内联函数，可以在 Lambda 表达式中使用 return 关键字了。此时的 return 代表的是返回外层的调用函数，也就是 `main()` 函数。
 
+输出：
 
+```
+main start
+printString begin
+lambda start
+```
 
+#### crossinline
 
+![](../images/chapter06/crossinline.png)
 
+在 Runnable 的 Lambda 表达式中调用了传入的函数类型参数。Runnable 的 Lambda 表达式在编译的时候会被转成匿名类的实现方式。
 
+上述代码实际上是在匿名类中，调用了传入的参数类型。
 
+而内联函数所引用的 Lambda 表达式允许使用 return 关键字进行函数返回，但是由于这里是在匿名类中调用的函数类型参数，此时是不可能进行外层调用函数返回的，最多只能对匿名类中的函数调用进行返回，因此提示了上述错误。
 
+**如果我们在高阶函数中创建了另外的 Lambda 或者匿名类的实现，并且在这些实现中调用函数类型参数，此时再将高阶函数声明成内联函数，就一定会提示错误。**
 
+使用 **`crossinline`** 关键字。
 
+```kotlin
+inline fun runRunnable(crossinline block: () -> Unit) {
+    val runnable = Runnable {
+        block()
+    }
+    runnable.run()
+}
+```
 
+声明 crossinline 之后，就无法在调用 `runRunnable()` 函数时的 Lambda 函数式使用 return 关键字进行函数返回了，但是仍然可以使用 `return@runRunnable` 的写法进行局部返回。
 
-
-
+crossinline 保证了内联函数除了 return 关键字的使用上以外的其他所有特性。
