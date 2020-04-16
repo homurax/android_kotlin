@@ -10,3 +10,5 @@
 
 [第 05 章 - 探究 Fragment](/note/chapter05.md)
 
+[第 06 章 - 详解广播机制](/note/chapter06.md)
+
