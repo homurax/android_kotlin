@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">FilePersistenceTest</string>
+    <string name="type_some_thing_here">Type some thing here</string>
+</resources>

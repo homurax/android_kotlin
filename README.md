@@ -12,3 +12,5 @@
 
 [第 06 章 - 详解广播机制](/note/chapter06.md)
 
+[第 07 章 - 持久化技术](/note/chapter07.md)
+
