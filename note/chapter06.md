@@ -60,6 +60,46 @@ button.setOnClickListener {
 
 ### 发送有序广播
 
+指定优先级
+
+```xml
+<receiver
+    android:name=".MyBroadcastReceiver"
+    android:enabled="true"
+    android:exported="true">
+    <intent-filter android:priority="100">
+        <action android:name="com.homurax.broadcasttest.MY_BROADCAST" />
+    </intent-filter>
+</receiver>
+```
+
+发送有序广播
+
+```kotlin
+button.setOnClickListener {
+    val intent = Intent("com.homurax.broadcasttest.MY_BROADCAST")
+    intent.setPackage(packageName)
+    // 有序广播
+    sendOrderedBroadcast(intent, null)
+}
+```
+
+截断广播
+
+```kotlin
+override fun onReceive(context: Context, intent: Intent) {
+    Toast.makeText(context, "received in MyBroadcastReceiver", Toast.LENGTH_LONG).show()
+    // 广播截断
+    abortBroadcast()
+}
+```
+
+## BroadcastReceiver 的最佳实践：实现强制下线功能
+
+重写 `onResume()` 和 ` onPause()` 这两个生命周期函数，然后分别在这两个方法里注册和取消注册 ForceOfflineReceiver。
+
+始终只需要保证只有处于栈顶的 Activity 才能接收到强制下线广播，非栈顶的 Activity 不应该也没必要接收这条广播，所以写在  `onResume()` 和 ` onPause()` 方法里就可以很好的解决这个问题，当一个 Activity 失去栈顶位置时就会自动取消 BroadcastReceiver 的注册。
+
 
 
 

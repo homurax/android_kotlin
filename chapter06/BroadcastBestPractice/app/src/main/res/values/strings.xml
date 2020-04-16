@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">BroadcastBestPractice</string>
+    <string name="login">Login</string>
+    <string name="account">Account:</string>
+    <string name="password">Password:</string>
+    <string name="send_force_offline_broadcast">Send force offline broadcast</string>
+</resources>
