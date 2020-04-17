@@ -29,3 +29,30 @@ try {
 
 use 函数是 Kotlin 提供的一个内置扩展函数，它会保证在 Lambda 表达式中的代码全部执行完之后自动将外层的流关闭，这样就不用写 finally 去手动关闭了。
 
+### 从文件中读取数据
+
+```kotlin
+val content = StringBuilder()
+try {
+    val input = openFileInput("data")
+    val reader = BufferedReader(InputStreamReader(input))
+    reader.use {
+        reader.forEachLine {
+            content.append(it)
+        }
+    }
+} catch (e: IOException) {
+    e.printStackTrace()
+}
+```
+
+forEachLine 函数也是 Kotlin 提供的一个内置扩展函数，它会将读到的每行内容都回调到 Lambda 表达式中。
+
+## SharedPreferences 存储
+
+SharedPreferences 是使用键值对的方式来存储数据的，支持多种不同的数据类型存储。
+
+### 将数据存储到 SharedPreferences  中
+
+
+
