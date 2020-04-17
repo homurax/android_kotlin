@@ -54,5 +54,71 @@ SharedPreferences 是使用键值对的方式来存储数据的，支持多种�
 
 ### 将数据存储到 SharedPreferences  中
 
+Android 中主要提供以下两种方法用于得到 SharedPreferences 对象：
+
+1. Context 类中的 `getSharedPreferences()` 方法
+
+   第一个参数：指定 SharedPreferences 文件的名称，不存在则会创建。存放在 `/data/date/<package name>/shared_prefs/` 目录下；
+
+   第二个参数：指定操作模式，目前只有默认的 MODE_PRIVATE 可选，表示只有当前应用程序才可以对这个 SharedPreferences 文件进行读写。其他几种操作模式均已被废弃。
+
+2. Activity 类中的 `getPreferences()` 方法
+
+   只接收一个操作模式参数，此方法自动将当前 Activity 的类名作为 SharedPreferences 的文件名。
+
+```kotlin
+val editor = getSharedPreferences("data", Context.MODE_PRIVATE).edit()
+editor.putString("name", "Tom")
+editor.putInt("age", 28)
+editor.putBoolean("married", false)
+// 提交
+editor.apply()
+```
+
+### 从 SharedPreferences 中读取数据
+
+```kotlin
+val prefs = getSharedPreferences("data", Context.MODE_PRIVATE)
+val name = prefs.getString("name", "")
+val age = prefs.getInt("age", 0)
+val married = prefs.getBoolean("married", false)
+```
+
+很多应用程序中偏好设置功能起始就使用带了 SharedPreferences 技术。
+
+### 实现记住密码功能
+
+## SQLite 数据库存储
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

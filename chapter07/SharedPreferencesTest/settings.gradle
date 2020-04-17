@@ -1,0 +1,2 @@
+rootProject.name='SharedPreferencesTest'
+include ':app'
