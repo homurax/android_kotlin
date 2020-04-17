@@ -209,27 +209,51 @@ try {
 
 每当升级一个数据库版本的时候，`onUpgrade()` 方法里都一定要写一个相应的 if 判断语句。保证 App 在跨版本升级的时候，每一次的数据库修改都能被全部执行。
 
+## Kotlin：高阶函数的应用
 
+### 简化 SharedPreferences 用法
 
+```kotlin
+fun SharedPreferences.open(block: SharedPreferences.Editor.() -> Unit) {
+    val editor = edit()
+    editor.block()
+    editor.apply()
+}
+```
 
+通过扩展函数的方式向 SharedPreferences 类中添加了一个 open 高阶函数，并且接收一个函数类型参数。
 
+实际上 Google 的 KTX 库已经自带了 edit 函数。
 
+### 简化 ContentValues 的用法
 
+```kotlin
+fun cvOf(vararg pairs: Pair<String, Any?>) = ContentValues().apply {
+    for (pair in pairs) {
+        val key = pair.first
+        when (val value = pair.second) {
+            is Int -> put(key, value)
+            is Long -> put(key, value)
+            is Short -> put(key, value)
+            is Float -> put(key, value)
+            is Double -> put(key, value)
+            is Boolean -> put(key, value)
+            is String -> put(key, value)
+            is Byte -> put(key, value)
+            is ByteArray -> put(key, value)
+            null -> putNull(key)
+        }
+    }
+}
+```
 
+在 Kotlin 中使用 A to B 这样的语法结构会创建一个 Pair 对象。
 
+**`vararg`** 关键字对应的就是 Java 中的可变参数列表，允许想这个方法中传入任意个 Pair 类型的参数。
 
+**`Any`** 是 Kotlin 中所有类的共通基类，相当于 Java 中的 Object 。
 
-
-
-
-
-
-
-
-
-
-
-
+KTX 库同样实际上已经提供了 contentValuesOf 函数。
 
 
 

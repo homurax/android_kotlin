@@ -4,6 +4,7 @@ import android.content.ContentValues
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import androidx.core.content.contentValuesOf
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
@@ -73,13 +74,14 @@ class MainActivity : AppCompatActivity() {
             /*if (true) {
                 throw NullPointerException()
             }*/
-            //val values = cvOf("name" to "Game of Thrones", "author" to "George Martin", "pages" to 720, "price" to 20.85)
-            val values = ContentValues().apply {
+            // val values = cvOf("name" to "Game of Thrones", "author" to "George Martin", "pages" to 720, "price" to 20.85)
+            val values = contentValuesOf("name" to "Game of Thrones", "author" to "George Martin", "pages" to 720, "price" to 20.85)
+            /*val values = ContentValues().apply {
                 put("name", "Game of Thrones")
                 put("author", "George Martin")
                 put("pages", 720)
                 put("price", 20.85)
-            }
+            }*/
             db.insert("Book", null, values)
             // 事务已经执行成功
             db.setTransactionSuccessful()
