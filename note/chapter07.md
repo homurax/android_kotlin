@@ -90,13 +90,124 @@ val married = prefs.getBoolean("married", false)
 
 ## SQLite 数据库存储
 
+### 创建数据库
 
+Android 提供了一个 SQLiteOpenHelper 抽象帮助类。
 
+`getWritableDatabase()` 和 `getReadableDatabase()` 都可以创建或打开一个现有的数据库（没有时创建一个新的数据库），并返回一个可对数据库进行读写操作的对象。
 
+当数据库不可写入时，`getReadableDatabase()` 返回的对象将以只读的方式打开数据库，而 `getWritableDatabase()` 方法则将出现异常。
 
+创建的数据库存放在 ` /data/date/<package name>/databases/` 目录下 。
 
+使用 `Database Navigator` 插件。
 
+### 升级数据库
 
+当指定的数据库版本号大于当前数据库版本号时，就会进入 `onUpgrade()` 方法中执行更新操作。
+
+```kotlin
+val dbHelper = MyDatabaseHelper(this, "BookStore.db", 2)
+```
+
+### 添加数据
+
+```kotlin
+val db = dbHelper.writableDatabase
+val values1 = ContentValues().apply {
+    put("name", "The Da Vinci Code")
+    put("author", "Dan Brown")
+    put("pages", 454)
+    put("price", 16.96)
+}
+db.insert("Book", null, values1)
+```
+
+### 更新数据
+
+```kotlin
+val db = dbHelper.writableDatabase
+val values = ContentValues()
+values.put("price", 10.99)
+db.update("Book", values, "name = ?", arrayOf("The Da Vinci Code"))
+```
+
+### 删除数据
+
+```kotlin
+val db = dbHelper.writableDatabase
+db.delete("Book", "pages > ?", arrayOf("500"))
+```
+
+### 查询数据
+
+`query()` 方法参数的详细解释
+
+| 方法参数 | 对应 SQL 部分 |描述 |
+| :------- | :------------ | :-- |
+|table|from table_name|指定描述的表名|
+|columns|select column1, column2|指定查询的列名|
+|selection|where column = value|指定 where 的约束条件|
+|selectionArgs|-|为 where 中的占位符提供具体的值|
+|groupBy|group by column|指定需要 group by 的列|
+|having|having column = value|对 group by 后的结果进一步约束|
+|orderBy|order by column1, column2|指定查询结果的排列方式|
+
+```kotlin
+val db = dbHelper.writableDatabase
+val cursor = db.query("Book", null, null, null, null, null, null)
+if (cursor.moveToFirst()) {
+    do {
+        val name = cursor.getString(cursor.getColumnIndex("name"))
+        val author = cursor.getString(cursor.getColumnIndex("author"))
+        val pages = cursor.getInt(cursor.getColumnIndex("pages"))
+        val price = cursor.getDouble(cursor.getColumnIndex("price"))
+        Log.d(TAG, "book name is $name")
+        Log.d(TAG, "book author is $author")
+        Log.d(TAG, "book pages is $pages")
+        Log.d(TAG, "book price is $price")
+    } while (cursor.moveToNext())
+}
+cursor.close()
+```
+
+### 使用 SQL 操作数据库
+
+查询数据时调用的是 SQLiteOpenHelper 的 `rawQuery()` 方法，其他操作都是调用的 `execSQL()` 方法。
+
+## SQLite 数据库的最佳实践
+
+### 使用事务
+
+```kotlin
+val db = dbHelper.writableDatabase
+// 开启事务
+db.beginTransaction()
+try {
+    db.delete("Book", null, null)
+    /*if (true) {
+        throw NullPointerException()
+    }*/
+    val values = ContentValues().apply {
+        put("name", "Game of Thrones")
+        put("author", "George Martin")
+        put("pages", 720)
+        put("price", 20.85)
+    }
+    db.insert("Book", null, values)
+    // 事务已经执行成功
+    db.setTransactionSuccessful()
+} catch (e: Exception) {
+    e.printStackTrace()
+} finally {
+    // 结束事务
+    db.endTransaction()
+}
+```
+
+### 升级数据库的最佳写法
+
+每当升级一个数据库版本的时候，`onUpgrade()` 方法里都一定要写一个相应的 if 判断语句。保证 App 在跨版本升级的时候，每一次的数据库修改都能被全部执行。
 
 
 
