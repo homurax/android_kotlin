@@ -254,17 +254,219 @@ contentResolver.update(uri, values, "column1 = ? & column2 = ?", arrayOf("text",
 contentResolver.delete(uri, "column1 = ?", arrayOf("1"))
 ```
 
+### 读取系统联系人
+
+```kotlin
+class MainActivity : AppCompatActivity() {
+
+    private val contactsList = ArrayList<String>()
+    private lateinit var adapter: ArrayAdapter<String>
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, contactsList)
+        contactsView.adapter = adapter
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_CONTACTS), 1)
+        } else {
+            readContacts()
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            1 -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    readContacts()
+                } else {
+                    Toast.makeText(this, "You denied the permission.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun readContacts() {
+
+        contentResolver.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            null, null, null, null)?.apply {
+            while (moveToNext()) {
+                val displayName = getString(getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME))
+                val number = getString(getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER))
+                contactsList.add("$displayName\n$number")
+            }
+            adapter.notifyDataSetChanged()
+            close()
+        }
+
+    }
+}
+```
+
+## 创建自己的 ContentProvider
+
+### 创建 ContentProvider 的步骤
+
+新建类去继承 ContentProvider，重写抽象方法。
+
+- `onCreate()`
+
+  初始化 ContentProvider 的时候调用。通常会在这里完成对数据库的创建和升级等操作，返回 true 表示内容提供器初始化成功，返回 false 则表示失败。
+
+- `query()`
+
+  从 ContentProvider 中查询数据。uri 参数用于确定查询哪张表，projection 参数用于确定查询哪些列，selection 和 selectionArgs 参数用于约束查询哪些行，sortOrder 参数用于对结果进行排序，查询的结果存放在 Cursor 对象中返回。
+
+- `insert()`
+
+  向 ContentProvider 中添加一条数据。uri 参数用于确定要添加到的表，待添加的数据保存在 values 参数中。添加完成后，返回一个用于表示这条新记录的 URI。
+
+- `update()`
+
+  更新 ContentProvider 中已有的数据。uri 参数用于确定更新哪一张表中的数据，新数据保存在 values 参数中，selection 和 selectionArgs 参数用于约束更新哪些行，受影响的行数将作为返回值返回。
+
+- `delete()`
+
+  从 ContentProvider 中删除数据。uri 参数用于确定删除哪一张表中的数据，selection 和 selectionArgs 参数用于约束删除哪些行，被删除的行数将作为返回值返回。
+
+- `getType()`
+
+  根据传入的内容 URI 来返回相应的 MIME 类型。
 
 
 
+内容 URI 标准格式：
+
+```
+content://com.example.app.provider/table1
+```
+
+期望访问的是 com.example.app 这个应用的 table1 表中 id 为 1 的数据。
+
+```
+content://com.example.app.provider/table1/1
+```
+
+内容 URI 的格式主要就只有以上两种，以路径结尾就表示期望访问该表中所有的数据，以id 结尾就表示期望访问该表中拥有相应 id 的数据。
+
+我们可以使用通配符的方式来分别匹配这两种格式的内容 URI，规则如下。
+
+- `*` 表示匹配任意长度的任意字符。
+- `#` 表示匹配任意长度的数字。
+
+一个能够匹配任意表的内容 URI 格式就可以写成：
+
+```
+content://com.example.app.provider/*
+```
+
+一个能够匹配 table1 表中任意一行数据的内容 URI 格式就可以写成：
+
+```
+content://com.example.app.provider/table1/#
+```
+
+UriMatcher 中提供了一个 `addURI()` 方法，这个方法接收 3 个参数，可以分别把 authority、path 和一个自定义代码传进去。
+
+这样，当调用 UriMatcher 的 `match()` 方法时，就可以将一个 Uri 对象传入，返回值是某个能够匹配这个 Uri 对象所对应的自定义代码，利用这个代码，我们就可以判断出调用方期望访问的是哪张表中的数据了。
 
 
 
+一个内容 URI 所对应的 MIME 字符串主要由 3 部分组成，Android 对这 3 个部分做出了如下格式规定。
+
+- 必须以 vnd 开头
+- 如果内容 URI 以路径结尾，则后接 `android.cursor.dir/`，如果内容 URI 以 id 结尾，则后接 `android.cursor.item/`。
+- 最后接上 `vnd.<authority>.<path>`
+
+```
+content://com.example.app.provider/table1
+vnd.android.cursor.dir/vnd.com.example.app.provider.table1
+
+content://com.example.app.provider/table1/1
+vnd.android.cursor.item/vnd.com.example.app.provider.table1
+```
 
 
 
+```kotlin
+class MyProvider : ContentProvider() {
 
+    private val table1Dir = 0
+    private val table1Item = 1
+    private val table2Dir = 2
+    private val table2Item = 3
 
+    private val uriMatcher = UriMatcher(UriMatcher.NO_MATCH)
 
+    init {
+        uriMatcher.addURI("com.example.app.provider", "table1", table1Dir)
+        uriMatcher.addURI("com.example.app.provider ", "table1/#", table1Item)
+        uriMatcher.addURI("com.example.app.provider ", "table2", table2Dir)
+        uriMatcher.addURI("com.example.app.provider ", "table2/#", table2Item)
+    }
 
+    override fun onCreate(): Boolean {
+        return false
+    }
+
+    override fun query(
+        uri: Uri,
+        projection: Array<out String>?,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+        sortOrder: String?
+    ): Cursor? {
+        when (uriMatcher.match(uri)) {
+            table1Dir -> {
+                // 查询table1表中的所有数据
+            }
+            table1Item -> {
+                // 查询table1表中的单条数据
+            }
+            table2Dir -> {
+                // 查询table2表中的所有数据
+            }
+            table2Item -> {
+                // 查询table2表中的单条数据
+            }
+        }
+        return null
+    }
+
+    override fun insert(uri: Uri, values: ContentValues?): Uri? {
+        return null
+    }
+
+    override fun update(
+        uri: Uri,
+        values: ContentValues?,
+        selection: String?,
+        selectionArgs: Array<out String>?
+    ): Int {
+        return 0
+    }
+
+    override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int {
+        return 0
+    }
+
+    override fun getType(uri: Uri) = when (uriMatcher.match(uri)) {
+        table1Dir -> "vnd.android.cursor.dir/vnd.com.example.app.provider.table1"
+        table1Item -> "vnd.android.cursor.item/vnd.com.example.app.provider.table1"
+        table2Dir -> "vnd.android.cursor.dir/vnd.com.example.app.provider.table2"
+        table2Item -> "vnd.android.cursor.item/vnd.com.example.app.provider.table2"
+        else -> null
+    }
+}
+```
+
+### 实现跨程序数据共享
 
