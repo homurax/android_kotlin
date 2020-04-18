@@ -14,3 +14,5 @@
 
 [第 07 章 - 持久化技术](/note/chapter07.md)
 
+[第 08 章 - 探究 ContentProvider](/note/chapter08.md)
+
