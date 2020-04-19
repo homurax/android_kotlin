@@ -352,12 +352,12 @@ Kotlin 极度弱化了静态方法这个概念，因为提供了更好的语法�
 ```kotlin
 class Util {
     fun doAction1(){
-        println("doAction1（）")
+        println("doAction1()")
     }
     
     companion object {
         fun doAction2(){
-            println("doAction2（）")
+            println("doAction2()")
         }
     }
 }
@@ -374,13 +374,13 @@ Kotlin 确实没有直接定义静态方法的关键字，如果确实需要定�
 ```kotlin
 class Util {
     fun doAction1(){
-        println("doAction1（）")
+        println("doAction1()")
     }
 
     companion object {
         @JvmStatic
         fun doAction2(){
-            println("doAction2（）")
+            println("doAction2()")
         }
     }
 }
