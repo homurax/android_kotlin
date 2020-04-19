@@ -637,5 +637,176 @@ class MainActivity : AppCompatActivity() {
 }
 ```
 
+## Kotlin：泛型和委托
+
+### 泛型的基本用法
+
+Kotlin 中的泛型和 Java 中的泛型有同有异。
+
+泛型主要有两种定义方式：一种是定义泛型类，另一种是定义泛型方法，使用的语法结构都是 `<T>` 。
+
+```kotlin
+class MyClass<T> {
+    fun method(param: T): T {
+        return param
+    }
+}
+
+val myClass = MyClass<Int>()
+val result = myClass.method(123)
+```
+
+```kotlin
+class MyClass {
+    fun <T> method(param: T): T {
+        return param
+    }
+}
+
+val myClass = MyClass()
+val result = myClass.method(123)
+```
+
+Kotlin 允许我们对泛型的类型进行限制。可以通过指定上界的方式来对泛型的类型进行约束。
+
+```kotlin
+class MyClass {
+    fun <T : Number> method(param: T): T {
+        return param
+    }
+}
+
+val myClass = MyClass()
+val result = myClass.method(123)
+```
+
+默认情况下，所有的泛型都是可以指定成可控类型的，因为泛型默认是 `Any?` ，如果要让泛型的类型不可空，指定成 `Any` 即可。
+
+```kotlin
+fun StringBuilder.build(block: StringBuilder.() -> Unit): StringBuilder {
+    block()
+    return this
+}
+// 使用泛型
+fun <T> T.build(block: T.() -> Unit): T {
+    block()
+    return this
+}
+```
+
+### 类委托和委托属性
+
+委托是一种设计模式，它的基本理念是：操作对象自己不会去处理某段逻辑，而是会把工作委托给另外一个辅助对象去处理。
+
+Kotlin 中将委托功能分为了两种：类委托和委托属性
+
+#### 类委托
+
+类委托的核心思想在于将一个类的具体实现委托给另一个类去完成。
+
+```kotlin
+class MySet<T>(val helperSet: HashSet<T>) : Set<T>  {
+
+    override val size: Int
+        get() = helperSet.size
+
+    override fun contains(element: T) = helperSet.contains(element)
+
+    override fun containsAll(elements: Collection<T>) = helperSet.containsAll(elements)
+
+    override fun isEmpty() = helperSet.isEmpty()
+
+    override fun iterator() = helperSet.iterator()
+}
+```
+
+接收的 HashSet 参数相当于一个辅助对象，Set 接口中的所有的方法实现中，都是调用了辅助对象中相应的方法。
+
+委托模式的意义在于让大部分方法实现调用辅助对象中的方法，少部分的方法实现由自己来重写，甚至加入一些自己独有的方法，那么 MySet 就会成为一个全新的数据结构类。
+
+Kotlin 中委托使用的关键字是 **`by`** ，在接口声明的后面使用 by 关键字，再接上受委托的辅助对象，就可以免去一大堆模板式的代码了。
+
+```kotlin
+class MySet<T>(val helperSet: HashSet<T>) : Set<T> by helperSet {
+}
+```
+
+新增方法，单独重写想要重写的方法即可。
+
+```kotlin
+class MySet<T>(val helperSet: HashSet<T>) : Set<T> by helperSet {
+    
+    fun helloWorld() = println("Hello World")
+
+    override fun isEmpty() = false
+}
+```
+
+#### 委托属性
+
+委托属性的核心思想是将一个属性（字段）的具体实现委托给另一个类去完成。
+
+委托属性的语法结构：
+
+```kotlin
+class MyClass {
+    var p by Delegate()
+}
+
+class Delegate {
+    var propValue: Any? = null
+
+    operator fun getValue(myClass: MyClass, prop: KProperty<*>): Any? {
+        return propValue
+    }
+
+    operator fun setValue(myClass: MyClass, prop: KProperty<*>, value: Any?) {
+        propValue = value
+    }
+}
+```
+
+by 关键字连接了左边的 p 属性和右边的的 Delegate 实例。
+
+这种写法就代表着将 p 属性的具体实现委托给了 Delegate 类去完成。当调用 p 属性的时候会自动调用 Delegate 类的 `getValue()` 方法，当给 p 属性赋值的时候会自动调用 Delegate 类的 `setValue()` 方法。
 
 
+
+这是一种标准的代码实现模板，在 Delegate 类中必须实现 `getValue()` 和 `setValue()` 方法，并且使用 operator 关键字进行声明。
+
+`getValue()` 方法接收参数：第一个参数用于声明该 Delegate 类的委托功能可以在什么类中使用；第二个参数 `KProperty<*>` 是 Kotlin 中的一个属性操作类，可以用于获取各种属性相关的值。`<*>` 这种泛型的写法表示你不知道或者不关心泛型的具体类型。返回值可以声明成任何类型，根据具体的实现逻辑去写就行了。
+
+`setValue()` 方法类似。前两个参数与 `getValue()` 方法相同，最后一个参数表示具体要赋值给委托属性的值，这个参数的类型必须和 `getValue()`  方法返回值的类型保持一致。
+
+现在当给 MyClass 的 p 属性赋值时，就会调用 Delegate 类的 `setValue()` 方法，当获取 MyClass 的 p 属性的值时，就会调用 Delegate 类的 `getValue()` 方法。
+
+如果 MyClass 中的 p 属性使用 val 关键字声明，可以不用在 Delegate 类中实现 `setValue()` 方法。
+
+### 实现一个自己的 lazy 函数
+
+```kotlin
+val p by lazy {}
+```
+
+只有 by 才是 Kotlin 中的关键字，lazy 在这里只是一个高阶函数而已。在 lazy  函数中会创建并返回一个 Delegate  对象。
+
+当我们调用 p 属性的时候，调用的是 Delegate 对象的 `getValue()` 方法，`getValue()` 方法又会调用 lazy 函数传入的 Lambda 表达式，这样表达式中的代码就可以得到执行了。调用 p 属性后得到的值就是 Lambda 表达式中最后一行代码的返回值。
+
+```kotlin
+class Later<T>(val block: () -> T) {
+
+    var value: Any? = null
+
+    operator fun getValue(any: Any?, prop: KProperty<*>): T {
+        if (value == null) {
+            value = block()
+        }
+        return value as T
+    }
+
+}
+
+fun <T> later(block: () -> T) = Later(block)
+```
+
+*这里只是大致还原了 lazy 函数的基本实现原理，在诸如同步、空值处理等方面没有实现得很严谨。*
