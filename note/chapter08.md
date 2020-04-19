@@ -470,3 +470,18 @@ class MyProvider : ContentProvider() {
 
 ### 实现跨程序数据共享
 
+by lazy 代码块是 Kotlin 提供的一种懒加载技术，代码块中的代码一开始并不会执行，只有当 uriMatcher 变量首次被调用的时候才会执行，并且会将代码块中最后一行的代码的返回值赋给 uriMatcher。
+
+```kotlin
+private val uriMatcher by lazy {
+    val matcher = UriMatcher(UriMatcher.NO_MATCH)
+    matcher.addURI(authority, "book", bookDir)
+    matcher.addURI(authority, "book/#", bookItem)
+    matcher.addURI(authority, "category", categoryDir)
+    matcher.addURI(authority, "category/#", categoryItem)
+    matcher
+}
+```
+
+
+
