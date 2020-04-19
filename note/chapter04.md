@@ -219,7 +219,7 @@ StaggeredGridLayoutManager 可以用于实现瀑布流布局。
 
 ## Kotlin : 延迟初始化和密封类
 
-## 对变量延迟初始化
+### 对变量延迟初始化
 
 由于全局变量 adapter 是在 `onCreate()` 方法中初始化的，所以不得不先将其赋值为 null，同时把它的类型声明成 `MsgAdapter?` 。其他方法中调用 adapter 时仍然要进行判空处理。
 
