@@ -256,11 +256,72 @@ private fun getBitmapFromUri(uri: Uri) = contentResolver.openFileDescriptor(uri,
 
 ### 播放音频
 
+MediaPlayer 类中常用的控制方法。
 
+| 方法名          | 功能描述                                                     |
+| :-------------- | :----------------------------------------------------------- |
+| setDataSource() | 设置要播放的音频文件的位置                                   |
+| prepare()       | 在开始播放之前调用这个方法完成准备工作                       |
+| start()         | 开始或继续播放音频                                           |
+| pause()         | 暂停播放音频                                                 |
+| reset()         | 将 MediaPlayer 对象重置到刚刚创建的状态                      |
+| seekTo()        | 从指定的位置开始播放音频                                     |
+| stop()          | 停止播放音频。调用这个方法后的 MediaPlayer 对象无法再播放音频 |
+| release()       | 释放掉与 MediaPlayer 对象相关的资源                          |
+| isPlaying()     | 判断当前 MediaPlayer 是否正在播放音频                        |
+| getDuration()   | 获取载入的音频文件的时长                                     |
 
+Android Studio 允许我们在项目工程中创建一个 assets 目录，并在这个目录下存放任意文件和子目录，这些文件和子目录在项目打包时会一并被打包到安装文件中，然后在程序中就可以借助 AssetManager 这个类提供的接口对 assets  目录下的文件进行读取。
 
+```kotlin
+class MainActivity : AppCompatActivity() {
 
+    private val mediaPlayer = MediaPlayer()
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        initMediaPlayer()
+        play.setOnClickListener {
+            if (!mediaPlayer.isPlaying) {
+                // 开始播放
+                mediaPlayer.start()
+            }
+        }
+        pause.setOnClickListener {
+            if (mediaPlayer.isPlaying) {
+                // 暂停播放
+                mediaPlayer.pause()
+            }
+        }
+        stop.setOnClickListener {
+            if (mediaPlayer.isPlaying) {
+                // 停止播放
+                mediaPlayer.reset()
+                initMediaPlayer()
+            }
+        }
+    }
+
+    private fun initMediaPlayer() {
+        // 获取 AssetManager 实例
+        val assetManager = assets
+        val fd = assetManager.openFd("music.mp3")
+        mediaPlayer.setDataSource(fd.fileDescriptor, fd.startOffset, fd.length)
+        mediaPlayer.prepare()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mediaPlayer.stop()
+        mediaPlayer.release()
+    }
+}
+
+```
+
+### 播放视频
 
 
 
