@@ -323,7 +323,64 @@ class MainActivity : AppCompatActivity() {
 
 ### 播放视频
 
+VideoView 的常用方法。
 
+| 方法名         | 功能描述                   |
+| :------------- | :------------------------- |
+| setVideoPath() | 设置要播放的视频文件的位置 |
+| start()        | 开始或继续播放视频         |
+| pause()        | 暂停播放视频               |
+| resume()       | 将视频从头开始播放         |
+| seekTo()       | 从指定的位置开始播放视频   |
+| isPlaying()    | 判断当前是否正在播放视频   |
+| getDuration()  | 获取载入的视频文件的时长   |
+
+VideoView 不支持直接读取 assets 目录下的视频资源，res 目录下允许我们再创建一个 raw 目录。
+
+```kotlin
+class MainActivity : AppCompatActivity() {
+
+    companion object {
+        const val TAG = "MainActivity"
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // 初始化
+        val uri = Uri.parse("android.resource://$packageName/${R.raw.video}")
+        videoView.setVideoURI(uri)
+
+        play.setOnClickListener {
+            if (!videoView.isPlaying) {
+                videoView.start() // 开始播放
+            }
+            Log.d(TAG, "video is playing")
+        }
+
+        pause.setOnClickListener {
+            if (videoView.isPlaying) {
+                videoView.pause() // 暂停播放
+            }
+        }
+
+        replay.setOnClickListener {
+            if (videoView.isPlaying) {
+                videoView.resume() // 重新播放
+            }
+        }
+    }
+
+
+    override fun onDestroy() {
+        super.onDestroy()
+        videoView.suspend()
+    }
+}
+```
+
+VideoView 只是做了一个封装，背后仍然是使用 MediaPlayer 对视频文件进行控制的。VideoView 在视频格式的支持以及播放效率方面存在着较大的不足。
 
 
 
