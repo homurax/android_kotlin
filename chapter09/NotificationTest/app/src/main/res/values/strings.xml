@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">NotificationTest</string>
+    <string name="send_notice">Send Notice</string>
+    <string name="this_is_notification_layout">This is notification layout</string>
+</resources>

@@ -16,3 +16,5 @@
 
 [第 08 章 - 探究 ContentProvider](/note/chapter08.md)
 
+[第 09 章 - 运用手机多媒体](/note/chapter09.md)
+
