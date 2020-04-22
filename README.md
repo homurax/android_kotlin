@@ -18,3 +18,5 @@
 
 [第 09 章 - 运用手机多媒体](/note/chapter09.md)
 
+[第 10 章 - 探究 Service](/note/chapter10.md)
+

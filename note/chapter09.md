@@ -382,9 +382,44 @@ class MainActivity : AppCompatActivity() {
 
 VideoView 只是做了一个封装，背后仍然是使用 MediaPlayer 对视频文件进行控制的。VideoView 在视频格式的支持以及播放效率方面存在着较大的不足。
 
+## Kotlin：使用 infix 函数构建更可读的语法
 
+Kotlin 提供了一种高级语法糖特性：**`infix`** 函数。
 
+infix 函数把编程语言调用的语法规则调整了一下，比如 `A to B` 这样的语法结构，实际上等价于 `A.to(B)` 的写法。
 
+```kotlin
+infix fun String.beginsWith(prefix: String) = startsWith(prefix)
 
+infix fun <T> Collection<T>.has(element: T) = contains(element)
 
+infix fun <A, B> A.with(that: B): Pair<A, B> = Pair(this, that)
+
+fun test() {
+    if ("Hello Kotlin" beginsWith "Hello") {
+        // TODO
+    }
+
+    val list = listOf("Apple", "Banana", "Orange", "Pear", "Grape")
+    if (list has "") {
+        // TODO
+    }
+    
+    val map = mapOf("Apple" with 1, "Banana" with 2, "Orange" with 3)
+}
+```
+
+`mapOf()` 函数实际上接收的是一个 Pair 类型的可变参数列表。而 `to()` 函数就是创建并返回了一个 Pair 对象。
+
+```kotlin
+/**
+ * Creates a tuple of type [Pair] from this and [that].
+ *
+ * This can be useful for creating [Map] literals with less noise, for example:
+ * @sample samples.collections.Maps.Instantiation.mapFromPairs
+ */
+public infix fun <A, B> A.to(that: B): Pair<A, B> = Pair(this, that)
+```
+
+使用定义泛型函数的方式将 `to()` 函数定义到了 A 类型下。并且接收一个 B 类型的参数，因此 A 和 B 可以是两种不同类型的泛型。
 
