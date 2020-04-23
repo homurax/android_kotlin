@@ -480,3 +480,296 @@ object ServiceCreator {
 val appService = ServiceCreator.create<AppService>()
 ```
 
+## Kotlin：使用协程编写高效的并发程序
+
+使用协程可以在编程语言的层面实现不同协程之前的切换，从而提升并发编程的运行效率。
+
+```kotlin
+fun foo() {
+    print(1)
+    print(2)
+    print(3)
+}
+
+fun bar() {
+    print(4)
+    print(5)
+    print(6)
+}
+```
+
+没有开启线程的情况下，先后调用 `foo()` 和 `bar()` 这两个方法，理论上输出的结果一定是 123456 。
+
+如果使用了协程，在协程 A 中去调用 `foo()` 方法，协程 B 中去调用 `bar()` 方法，它们仍然会运行在同一个线程当中，但是在执行 `foo()` 方法时随时都有可能被挂起转而去执行 `bar()` 方法，执行 `bar()` 方法时也随时都有可能被挂起转而去执行 `foo()` 方法，最终的输出结果也就变得不确定了。
+
+协程允许我们在单线程模式下模拟多线程编程的效果，代码执行时的挂起与恢复完全是由编程语言来控制的，和操作系统无关。
+
+### 协程的基本用法
+
+kotlinx.coroutines : https://github.com/Kotlin/kotlinx.coroutines
+
+Kotlin 并没有将协程纳入标准库的 API 当中，而是以依赖库的形式提供的。
+
+```
+implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.5'
+implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.5'
+```
+
+---
+
+```kotlin
+fun main() {
+    GlobalScope.launch {
+        println("codes run in coroutine scope")
+        delay(1500)
+        println("codes run in coroutine scope finished")
+    }
+    Thread.sleep(1000)
+}
+```
+
+**GlobalScope.launch** 函数可以创建一个协程的作用域，传递给 launch 函数的 Lambda 表达式就是在协程中运行的了。并且创建的是顶层协程，协程当应用程序运行结束时也会跟着一起结束。
+
+`delay()` 函数是一个非阻塞式的挂起函数，它只挂起当前协程，并不会影响其他协程的运行。此函数只能在协程的作用域或其他挂起函数中调用。
+
+`Thread.sleep()` 方法阻塞当前的线程，运行在该线程下的所有协程都会被阻塞。
+
+---
+
+```kotlin
+fun main() {
+    runBlocking {
+        println("codes run in coroutine scope")
+        delay(1500)
+        println("codes run in coroutine scope finished")
+    }
+    Thread.sleep(1000)
+}
+```
+
+**runBlocking** 函数同样会创建一个协程的作用域，它保证在协程作用域内的所有代码和子协程没有全部执行完之前一直阻塞当前*线程*。所以两条信息都可以打印出来。runBlocking 函数通常只应该在测试环境下使用。
+
+---
+
+```kotlin
+fun main() {
+    // 创建多个协程
+    runBlocking {
+        launch {
+            println("launch1")
+            delay(1000)
+            println("launch1 finished")
+        }
+        launch {
+            println("launch2")
+            delay(1000)
+            println("launch2 finished")
+        }
+    }
+}
+```
+
+**launch** 函数必须在协程的作用域中才能调用，它会在当前协程的作用域下创建子协程。
+
+如果外层作用域的协程结束了，该作用域下的所有子协程也会一同结束。
+
+---
+
+Kotlin 提供了一个 **`suspend`** 关键字，使用它可以将任意函数声明成挂起函数，挂起函数之间都是可以互相调用的。
+
+```kotlin
+suspend fun printDot() {
+    println(".")
+    delay(1000)
+}
+```
+
+suspend 关键字并不会给函数提供协程作用域，函数中不能直接调用 launch，可以通过 coroutineScope 函数来解决。
+
+---
+
+**coroutineScope** 函数也是一个挂起函数，因此可以在其他挂起函数中调用。它会继承外部的协程作用域并创建一个子作用域。通过这个特性，就可以给任意挂起函数提供协程作用域了。
+
+```kotlin
+suspend fun printDot() = coroutineScope {
+    launch {
+        println(".")
+        delay(1000)
+    }
+}
+```
+
+coroutineScope 函数同样保证其作用域内的所有代码和子协程在全部执行完之前，会一直阻塞当前协程。但是不影响其他协程，也不影响任何线程。
+
+```kotlin
+fun main() {
+    runBlocking {
+        coroutineScope {
+            launch {
+                for (i in 1..10) {
+                    println(i)
+                    delay(1000)
+                }
+                println("coroutineScope finished")
+            }
+        }
+        println("runBlocking finished")
+    }
+}
+```
+
+### 更多的作用域构建器
+
+通过调用返回的 Job 对象的 `cancel()` 方法来取消协程。
+
+```kotlin
+val job = GlobalScope.launch {
+    // TODO
+}
+job.cancel()
+```
+
+如果每次创建的都是顶层协程，当 Activity 关闭时，就要逐个调用已创建协程的 `cancel()` 方法，所以不太建议使用顶层协程。
+
+```kotlin
+val job = Job()
+// CoroutineScope() 是函数 返回一个 CoroutineScope 对象
+val scope = CoroutineScope(job)
+scope.launch {
+    // TODO
+}
+job.cancel()
+```
+
+所有调用 CoroutineScope 的 launch 函数所创建的协程，都会被关联在 Job 对象的作用域下面。只需要调用一次 `cancel()` 方法，就可以将同一作用域内的所有协程全部取消。
+
+---
+
+**async** 函数会创建一个新的子协程并返回一个 Deferred 对象。如果需要获取 async 函数代码块的执行结果，调用 Deferred 对象的 `await()` 方法即可。async 函数必须在协程作用域当中才能使用。
+
+```kotlin
+runBlocking {
+    val result = async {
+        5 + 5
+    }.await()
+    println(result)
+}
+```
+
+实际上调用 async 函数之后，代码块中的代码会立刻开始执行。当调用 `await()` 方法时，如果代码块中的代码还没执行完，那么 `await()` 方法会将当前协程阻塞住，直到可以获得 async 函数的结果。
+
+两个 async 是串行的关系。
+
+```kotlin
+runBlocking {
+    val start = System.currentTimeMillis()
+    val result1 = async {
+        delay(1000)
+        5 + 5
+    }.await()
+    val result2 = async {
+        delay(1000)
+        4 + 6
+    }.await()
+    println("result is ${result1 + result2}")
+    val end = System.currentTimeMillis()
+    println("cost ${end - start} ms.")
+}
+```
+
+两个 async 是并行关系。
+
+```kotlin
+runBlocking {
+    val start = System.currentTimeMillis()
+    val deferred1 = async {
+        delay(1000)
+        5 + 5
+    }
+    val deferred2 = async {
+        delay(1000)
+        4 + 6
+    }
+    println("result is ${deferred1.await() + deferred2.await()}")
+    val end = System.currentTimeMillis()
+    println("cost ${end - start} ms.")
+}
+```
+
+---
+
+**`withContext()`** 函数是一个挂起函数，可以理解成 async 函数的一种简化版。
+
+```kotlin
+runBlocking {
+    val result = withContext(Dispatchers.Default) {
+        5 + 5
+    }
+    println(result)
+}
+```
+
+调用 `withContext()` 函数之后会立即执行代码块中代码，同时将当前协程阻塞住，最后一行的执行结果作为 `withContext()` 函数的返回值返回。基本上相当于 `val result = async{ 5 + 5 }.await()` 的写法。
+
+唯一不同的是 `withContext()` 函数强制要求指定一个 *线程参数*。
+
+很多传统编程情况下需要开启多线程执行的并发任务，现在可以在一个线程下开启多个协程来执行。但是并不意味着永远不需要开启线程了，Android 中要求网络请求必须在子线程中进行。如果在主线程中开启了协程去执行网络请求，那么程序仍然会出错。这个时候应该通过 *线程参数* 给协程指定一个具体的运行线程。
+
+线程参数主要有以下 3 种值可选：
+
+- `Dispatchers.Default`
+
+  表示会使用一种默认低并发的线程策略。当要执行的代码属于计算密集型任务时，开启过高的并发反而可能影响任务的运行效率，此时就可以使用这个值。
+
+- `Dispatchers.IO`
+
+  表示会使用一种高并发的线程策略。当要执行的代码大多数时间是在阻塞和等待中，比如执行网络请求是，为了能够支持更高的并发数量，就可以使用这个值。
+
+- `Dispatchers.Main`
+
+  表示不会开启子线程，而是在 Android 主线程中执行代码。这个值只能在 Android 项目中使用，纯 Kotlin 程序使用会出现错误。
+
+### 使用协程简化回调的写法
+
+通过 **suspendCoroutine** 函数可以将传统依靠匿名类来实现的回调机制大幅简化。
+
+suspendCoroutine 函数必须在协程作用域或挂起函数中才能调用，接收一个 Lambda 表达式参数，主要作用是将当前协程立即挂起，然后在一个普通的线程中执行 Lambda 表达式中的代码。Lambda 表达式的参数列表上会传入一个 Continuation 参数，调用它的 `resume()` 或 `resumeWithException()` 方法可以让协程恢复执行。
+
+
+
+将 `await()` 定义为 ` Call<T>` 的扩展函数，通过 suspendCoroutine 挂起当前协程：
+
+```kotlin
+suspend fun <T> Call<T>.await(): T {
+    return suspendCoroutine { continuation ->
+        enqueue(object : Callback<T> {
+            override fun onResponse(call: Call<T>, response: Response<T>) {
+                val body = response.body()
+                if (body != null) {
+                    continuation.resume(body)
+                } else {
+                    continuation.resumeWithException(RuntimeException("response body is null"))
+                }
+            }
+
+            override fun onFailure(call: Call<T>, t: Throwable) {
+                continuation.resumeWithException(t)
+            }
+        })
+    }
+}
+```
+
+调用：
+
+```kotlin
+suspend fun getAppData() {
+    try {
+        val appList = ServiceCreator.create<AppService>().getAppData().await()
+        // TODO
+        println(appList)
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
