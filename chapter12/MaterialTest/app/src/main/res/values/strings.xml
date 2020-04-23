@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">MaterialTest</string>
+    <string name="backup">Backup</string>
+    <string name="delete">Delete</string>
+    <string name="settings">Settings</string>
+    <string name="this_is_menu">This is menu</string>
+</resources>
