@@ -6,6 +6,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
 import androidx.core.view.GravityCompat
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
@@ -19,6 +20,24 @@ class MainActivity : AppCompatActivity() {
             it.setDisplayHomeAsUpEnabled(true)
             it.setHomeAsUpIndicator(R.drawable.ic_menu)
         }
+        // 设置默认选中
+        navView.setCheckedItem(R.id.navCall)
+        // 菜单项选中事件监听
+        navView.setNavigationItemSelectedListener {
+            drawerLayout.closeDrawers()
+            true
+        }
+
+        /*fab.setOnClickListener {
+            Toast.makeText(this, "FAB clicked", Toast.LENGTH_SHORT).show()
+        }*/
+        fab.setOnClickListener {
+            Snackbar.make(it, "Data deleted", Snackbar.LENGTH_SHORT)
+                .setAction("Undo") {
+                    Toast.makeText(this, "Data restored", Toast.LENGTH_SHORT).show()
+                }
+                .show()
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -28,7 +47,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.home -> drawerLayout.openDrawer(GravityCompat.START)
+            android.R.id.home -> drawerLayout.openDrawer(GravityCompat.START)
             R.id.backup -> Toast.makeText(this, "You clicked Backup", Toast.LENGTH_SHORT).show()
             R.id.delete -> Toast.makeText(this, "You clicked Delete", Toast.LENGTH_SHORT).show()
             R.id.settings -> Toast.makeText(this, "You clicked Settings", Toast.LENGTH_SHORT).show()

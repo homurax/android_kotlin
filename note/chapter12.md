@@ -45,7 +45,6 @@ colorAccent 不只是用来指定这样一个按钮的颜色，而是更多表�
 **使用 Toolbar**
 
 ```xml
-<?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -73,7 +72,6 @@ colorAccent 不只是用来指定这样一个按钮的颜色，而是更多表�
 **为 Toolbar 添加 action 按钮**
 
 ```xml
-<?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
@@ -120,7 +118,6 @@ Toolbar 中的 action 按钮只会显示图标，菜单中的 action 按钮只�
 AndroidX 库中提供了一个 DrawerLayout 控件。
 
 ```xml
-<?xml version="1.0" encoding="utf-8"?>
 <androidx.drawerlayout.widget.DrawerLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -169,7 +166,7 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
 override fun onOptionsItemSelected(item: MenuItem): Boolean {
     when (item.itemId) {
-        R.id.home -> drawerLayout.openDrawer(GravityCompat.START)
+        android.R.id.home -> drawerLayout.openDrawer(GravityCompat.START)
         ...
     }
     return true
@@ -179,3 +176,154 @@ override fun onOptionsItemSelected(item: MenuItem): Boolean {
 设置显示导航栏，设置导航按钮图标。实际上，Toolbar 最左侧的这个按钮就叫作 Home 按钮，它默认的图标是一个返回的箭头，含义是返回上一个 Activity 。这里将它默认的样式和作用都进行了修改。
 
 Home 按钮的 id 永远都是 `android.R.id.home`。然后调用 DrawerLayout 的 `openDrawer()` 方法将滑动菜单展示出来，传入一个 Gravity 参数，为了保证这里的行为和 XML 中定义的一致，传入 `GravityCompat.START` 。
+
+### NavigationView
+
+NavigationView 是 Material 库中提供的一个控件，它不仅是严格按照 Material Design 的要求来进行设计的，而且还可以将滑动菜单页面的实现变得非常简单。
+
+```
+implementation 'com.google.android.material:material:1.0.0'
+implementation 'de.hdodenhof:circleimageview:3.1.0'
+```
+
+```xml
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/navCall"
+            android:icon="@drawable/nav_call"
+            android:title="@string/call" />
+        <item
+            android:id="@+id/navFriends"
+            android:icon="@drawable/nav_friends"
+            android:title="@string/friends" />
+        <item
+            android:id="@+id/navLocation"
+            android:icon="@drawable/nav_location"
+            android:title="@string/location" />
+        <item
+            android:id="@+id/navMail"
+            android:icon="@drawable/nav_mail"
+            android:title="@string/mail" />
+        <item
+            android:id="@+id/navTask"
+            android:icon="@drawable/nav_task"
+            android:title="@string/tasks" />
+    </group>
+</menu>
+```
+
+group 表示一个组，checkableBehavior 指定为 single 表示组中的所有菜单项只能单选。
+
+```xml
+<com.google.android.material.navigation.NavigationView
+    android:id="@+id/navView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_gravity="start"
+    app:menu="@menu/nav_menu"
+    app:headerLayout="@layout/nav_header"/>
+```
+
+```kotlin
+override fun onCreate(savedInstanceState: Bundle?) {
+    ...
+    // 设置默认选中
+    navView.setCheckedItem(R.id.navCall)
+    // 菜单项选中事件监听
+    navView.setNavigationItemSelectedListener {
+        drawerLayout.closeDrawers()
+        true
+    }
+}
+```
+
+## 悬浮按钮和可交互提示
+
+### FloatingActionButton
+
+这个控件可以比较轻松地实现悬浮按钮的效果。
+
+```xml
+<com.google.android.material.floatingactionbutton.FloatingActionButton
+    android:id="@+id/fab"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="bottom|end"
+    android:layout_margin="16dp"
+    android:src="@drawable/ic_done" />
+```
+
+还里使用 `app:elevation` 属性来给 FloatingActionButton 指定一个高度值，高度值越大，投影范围也越大，但是投影效果越淡，高度值越小，投影范围也越小，但是投影效果越浓。当然这些效果的差异其实都不怎么明显。
+
+FloatingActionButton 和普通的 Button 其实没什么两样，都是调用 `setOnClickListener()` 方法来设置按钮的点击事件。
+
+### Snackbar
+
+Toast 的作用是告诉用户现在发生了什么事情，但同时用户只能被动接收这个事情，因为没有什么办法能让用户进行选择。
+
+Snackbar 则在这方面进行了扩展，它允许在提示当中加入一个可交互按钮，当用户点击按钮的时候可以执行一些额外的逻辑操作。
+
+```kotlin
+fab.setOnClickListener {
+    Snackbar.make(it, "Data deleted", Snackbar.LENGTH_SHORT)
+        .setAction("Undo") {
+            Toast.makeText(this, "Data restored", Toast.LENGTH_SHORT).show()
+        }
+        .show()
+}
+```
+
+### CoordinatorLayout
+
+CoordinatorLayout 可以说是一个加强版的 FrameLayout，这个布局也是由 Material 库提供的。CoordinatorLayout 可以监听其所有子控件的各种事件，然后自动帮助我们做出最为合理的响应。
+
+点击悬浮按钮，悬浮按钮自动向上偏移了 Snackbar 的同等高度，从而确保不会被遮挡住，当 Snackbar 消失的时候，悬浮按钮会自动向下偏移回到原来位置。另外悬浮按钮的向上和向下偏移也是伴随着动画效果的，且和 Snackbar 完全同步。
+
+Snackbar 并不是 CoordinatorLayout 的子控件，但是它却可以被监听到。
+
+在 Snackbar 的 `make()` 方法中传入的第一个参数是用来指定 Snackbar 是基于哪个 View 来触发的。而  FloatingActionButton 是 CoordinatorLayout 中的子控件，因此这个事件就理所应当能被监听到了。
+
+## 卡片式布局
+
+### MaterialCardView
+
+MaterialCardView 也是一个 FrameLayout，只是额外提供了圆角和阴影等效果，看上去会有立体的感觉。
+
+```xml
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="4dp"
+    android:elevation="5dp">
+
+    <TextView
+        android:id="@+id/infoText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+</com.google.android.material.card.MaterialCardView>
+```
+
+可以通过 `app:cardCornerRadius` 属性指定卡片圆角的弧度，数值越大，圆角的弧度也越大。另外还可以通过 `app:elevation` 属性指定卡片的高度，高度值越大，投影范围也越大，但是投影效果越淡，高度值越小，投影范围也越小，但是投影效果越浓，这一点和 FloatingActionButton 是一致的。
+
+
+
+```
+implementation 'com.github.bumptech.glide:glide:4.11.0'
+```
+
+Glide 是一个超级强大的图片加载库，它不仅可以用于加载本地图片，还可以加载网络图片、GIF 图片甚至是本地视频。最重要的是，Glide 的用法非常简单，只需几行代码就能轻松实现复杂的图片加载功能。
+
+
+
+
+
+
+
+
+
+
+
