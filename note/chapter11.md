@@ -325,11 +325,55 @@ private fun parseJSONWithGSON(jsonData: String) {
 }
 ```
 
+## 网络请求回调的实现方式
 
+```kotlin
+interface HttpCallbackListener {
+    fun onFinish(response: String)
+    fun onError(e: Exception)
+}
 
+fun sendHttpRequest(address: String, listener: HttpCallbackListener) {
+    thread { // 开启新线程
+        var connection: HttpURLConnection? = null
+        try {
+            val response = StringBuilder()
+            val url = URL(address)
+            connection = url.openConnection() as HttpURLConnection
+            connection.connectTimeout = 8000
+            connection.readTimeout = 8000
+            val input = connection.inputStream
+            val reader = BufferedReader(InputStreamReader(input))
+            reader.use {
+                reader.forEachLine {
+                    response.append(it)
+                }
+            }
+            // 回调 onFinish()
+            listener.onFinish(response.toString())
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // 回调 onError()
+            listener.onError(e)
+        } finally {
+            connection?.disconnect()
+        }
+    }
+}
 
+// OkHttp 库中自带的回调接口
+fun sendOkHttpRequest(address: String, callback: okhttp3.Callback) {
+    val client = OkHttpClient()
+    val request = Request.Builder()
+        .url(address)
+        .build()
+    client.newCall(request).enqueue(callback)
+}
+```
 
+不管使用 HttpURLConnection 还是 OkHttp，最终的回调接口都还是在子线程中运行的，因此不可以在这里执行任何的 UI 操作，除非借助 `runOnUiThread()` 方法来进行线程转换。
 
+### 
 
 
 
