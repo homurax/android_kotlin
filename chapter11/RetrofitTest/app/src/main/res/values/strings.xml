@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">RetrofitTest</string>
+    <string name="get_app_data">Get App Data</string>
+</resources>

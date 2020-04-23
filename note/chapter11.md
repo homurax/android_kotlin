@@ -373,27 +373,110 @@ fun sendOkHttpRequest(address: String, callback: okhttp3.Callback) {
 
 不管使用 HttpURLConnection 还是 OkHttp，最终的回调接口都还是在子线程中运行的，因此不可以在这里执行任何的 UI 操作，除非借助 `runOnUiThread()` 方法来进行线程转换。
 
-### 
+## 最好用的网络库：Retrofit
 
+Retrofit 的项目主页地址是：https://github.com/square/retrofit
 
+OkHttp 侧重的是底层通信的实现，而 Retrofit 侧重的是上层接口的封装。
 
+### Retrofit 的基本用法
 
+```
+implementation 'com.squareup.retrofit2:retrofit:2.8.1'
+implementation 'com.squareup.retrofit2:converter-gson:2.8.1'
+```
 
+服务器提供的接口通常是可以根据功能来归类的。将服务器接口合理归类能够让代码结构变的更加合理，提高可阅读性和可维护性。
 
+Retrofit 允许我们对服务器接口进行归类，将功能同属一类的服务器接口定义到同一个接口文件当中。可以配置好一个根路径，然后在指定服务器接口地址时只需要使用相对路径即可。
 
+我们不用关心网络通信的细节，只需要在接口文件中声明一系列方法和返回值，然后通过注解的方式指定该方法对应哪个服务器接口，以及需要提供哪些参数。
 
+Retrofit 的接口文件建议以具体的功能种类名开头，并以 Service 结尾。方法的返回值必须声名成 Retrofit 中内置的 Call 类型，并通过泛型来指定服务器响应的数据应该转换成什么对象。Retrofit 结合 RxJava 使用就可以将返回值声明成 Observable、Flowable 等类型。
 
+```kotlin
+interface AppService {
+    @GET("get_data.json")
+    fun getAppData(): Call<List<App>>
+}
+```
 
+```kotlin
+getAppDataBtn.setOnClickListener {
+    val retrofit = Retrofit.Builder()
+        .baseUrl("http://127.0.0.1/")
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+    
+    val appService = retrofit.create(AppService::class.java)
+    appService.getAppData().enqueue(object : Callback<List<App>> {
 
+        override fun onResponse(call: Call<List<App>>, response: Response<List<App>>) {
+            val list = response.body()
+            if (list != null) {
+                for (app in list) {
+                    Log.d("MainActivity", "id is ${app.id}")
+                    Log.d("MainActivity", "name is ${app.name}")
+                    Log.d("MainActivity", "version is ${app.version}")
+                }
+            }
+        }
 
+        override fun onFailure(call: Call<List<App>>, t: Throwable) {
+            t.printStackTrace()
+        }
+    })
+}
+```
 
+### 处理复杂的接口地址类型
 
+Retrofit 对所有常用的 HTTP 请求类型都进行了支持，使用 `@GET`、`@POST`、`@PUT`、`@PATCH`、`@DELETE` 注解就可以让 Retrofit 发出响应类型的请求。
 
+`@Path("page")` 声明的参数的值会被替换到地址中占位符的位置。
 
+`@Query("param")`，Retrofit 会自动按照带参数 GET 请求的格式将参数构建到请求地址当中。
 
+使用 ResponseBody 表示 Retrofit 能够接收任意类型的响应数据，并且不会对响应数据进行解析。
 
+`@Body`，Retrofit 会自动将对象中的数据转换成 JSON 格式的文本，并放到 HTTP 请求的 body 部分。
 
+`@Headers("...", "...")` 可以直接指定 header 参数。
 
+`@Header("User-Agent")` 动态指定 header 的值。
 
+```kotlin
+@GET("get_data.json")
+fun getData(@Header("User-Agent") userAgent: String, @Header("Cache-Control") cacheControl: String): Call<Data>
+// fun getData(@Query("user") user: String, @Query("token") token: String): Call<Data>
 
+@DELETE("data/{id}")
+fun deleteData(@Path("id") id: String): Call<ResponseBody>
+
+@POST("data/create")
+fun createData(@Body data: Data): Call<ResponseBody>
+```
+
+### Retrofit 构建器的最佳写法
+
+Retrofit 对象是全局通用的，只需要调用 `create()` 方法时针对不同的 Service 接口传入相应的 Class 类型即可。
+
+```kotlin
+object ServiceCreator {
+
+    private const val BASE_URL = "http://127.0.0.1/"
+
+    private val retrofit = Retrofit.Builder()
+        .baseUrl(BASE_URL)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
+    fun <T> create(serviceClass: Class<T>): T = retrofit.create(serviceClass)
+
+    inline fun <reified T> create(): T = create(T::class.java)
+
+}
+
+val appService = ServiceCreator.create<AppService>()
+```
 
