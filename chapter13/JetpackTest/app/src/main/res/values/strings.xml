@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">JetpackTest</string>
+    <string name="plus_one">Plus One</string>
+    <string name="clear">Clear</string>
+</resources>

@@ -24,3 +24,5 @@
 
 [第 12 章 - Material Design](/note/chapter12.md)
 
+[第 13 章 - 探究 Jetpack](/note/chapter13.md)
+
