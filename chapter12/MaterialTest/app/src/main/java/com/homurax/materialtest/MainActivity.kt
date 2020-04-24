@@ -6,10 +6,25 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
 import androidx.core.view.GravityCompat
+import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
+
+    val fruits = mutableListOf(Fruit("Apple", R.drawable.apple),
+        Fruit("Banana", R.drawable.banana),
+        Fruit("Orange", R.drawable.orange),
+        Fruit("Watermelon", R.drawable.watermelon),
+        Fruit("Pear", R.drawable.pear),
+        Fruit("Grape", R.drawable.grape),
+        Fruit("Pineapple", R.drawable.pineapple),
+        Fruit("Strawberry", R.drawable.strawberry),
+        Fruit("Cherry", R.drawable.cherry),
+        Fruit("Mango", R.drawable.mango))
+
+    val fruitList = ArrayList<Fruit>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,6 +52,38 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "Data restored", Toast.LENGTH_SHORT).show()
                 }
                 .show()
+        }
+
+        initFruits()
+        val layoutManager = GridLayoutManager(this, 2)
+        recyclerView.layoutManager = layoutManager
+        val adapter = FruitAdapter(this, fruitList)
+        recyclerView.adapter = adapter
+
+        // 设置下拉刷新进度条的颜色
+        swipeRefresh.setColorSchemeResources(R.color.colorPrimary)
+        swipeRefresh.setOnRefreshListener { // 下拉刷新监听
+            refreshFruits(adapter)
+        }
+    }
+
+    private fun refreshFruits(adapter: FruitAdapter) {
+        thread {
+            Thread.sleep(2000)
+            runOnUiThread {
+                initFruits()
+                adapter.notifyDataSetChanged()
+                // 刷新事件结束 隐藏刷新进度条
+                swipeRefresh.isRefreshing = false
+            }
+        }
+    }
+
+    private fun initFruits() {
+        fruitList.clear()
+        repeat(50) {
+            val index = (0 until fruits.size).random()
+            fruitList.add(fruits[index])
         }
     }
 
