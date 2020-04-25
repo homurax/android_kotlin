@@ -183,3 +183,19 @@ override fun onCreate(savedInstanceState: Bundle?) {
 }
 ```
 
+主动获知当前的生命周期状态。
+
+```kotlin
+class MyObserver(val lifecycle: Lifecycle) : LifecycleObserver {
+    ...
+}
+```
+
+有了 Lifecycle 对象后，可以通过 `lifecycle.currentState` 来主动获知当前的生命周期状态。
+
+返回的声明周期状态是一个枚举类型，一共有五种状态：`INITIALIZED`、`DESTROYED`、`CREATED`、`STARTED`、`RESUMED` 。
+
+Activity 生命周期状态与事件的对应关系。
+
+![](../images/chapter13/lifecycle-states.svg)
+
