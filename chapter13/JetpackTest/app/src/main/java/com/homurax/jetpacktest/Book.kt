@@ -4,8 +4,9 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 @Entity
-data class User(var firstName: String, var lastName: String, var age: Int) {
+data class Book(var name: String, var pages: Int, var author: String) {
 
     @PrimaryKey(autoGenerate = true)
-    var id: Long = 0
+    var id = 0L
+
 }

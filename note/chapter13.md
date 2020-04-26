@@ -378,15 +378,299 @@ viewModel.user.observe(this, Observer { user ->
 })
 ```
 
+---
+
+ViewModel 中某个获取数据的方法有可能是没有参数的，在没有可观察数据的情况下，需要创建一个空的 LiveData 对象。
+
+```kotlin
+private val refreshLiveData = MutableLiveData<Any?>()
+
+val refreshResult = Transformations.switchMap(refreshLiveData) {
+    Repository.getUser("")
+}
+
+fun refresh() {
+    refreshLiveData.value = refreshLiveData.value
+}
+```
+
+`refresh()` 方法中只是将 refreshLiveData 原有的数据取出来，再重新设置到 refreshLiveData 当中，这样就能触发一次数据变化。LiveData 内部不会判断即将设置的数据与原有数据是否相同，只要调用了 `setValue()` 或 `postValue()` 方法，就一定会触发变化事件。
+
+Activity 中观察 refreshResult 即可。
+
+## Room
+
+Room 是 Android 官方推出的 ORM 框架，并将它加入了 Jetpack 当中。
+
+### 使用 Room 进行增删改查
+
+Room 主要由 Entity、Dao、Database 这 3 部分组成。
+
+- Entity
+
+  用于定义封装实际数据的实体类，每个实体类都会在数据库中有一张对应的表，并且表中的列是根据具体实体类的字段自动生成的。
+
+- Dao
+
+  Dao 是数据访问对象。通常会在这里对数据库的各项操作进行封装，在实际编程的时候，逻辑层就不需要和底层数据库打交道了，直接和 Dao 层进行交互即可。
+
+- Database 
+
+  用于定义数据库中的关键信息，包括数据库的版本号，包含哪些实体类以及提供 Dao 层的访问实例。
+
+新增 kotlin-kapt 插件和依赖库。
+
+```
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
+
+dependencies {
+    ...
+    implementation "androidx.room:room-runtime:2.2.5"
+    kapt "androidx.room:room-compiler:2.2.5"
+}
+```
+
+kapt 只能在 Kotlin 项目中使用，如果是 Java 项目的话，使用 annotationProcessor 即可。
+
+---
+
+```kotlin
+@Entity
+data class User(var firstName: String, var lastName: String, val age: Int) {
+
+    @PrimaryKey(autoGenerate = true)
+    var id: Long = 0
+}
+```
 
 
 
+```kotlin
+@Dao
+interface UserDao {
+
+    @Insert
+    fun insertUser(user: User): Long
+
+    @Update
+    fun updateUser(newUser: User)
+
+    @Query("select * from User")
+    fun loadAllUsers(): List<User>
+
+    @Query("select * from User where age > :age")
+    fun loadUsersOlderThan(age: Int): List<User>
+
+    @Delete
+    fun deleteUser(user: User)
+
+    @Query("delete from User where lastName = :lastName")
+    fun deleteUserByLastName(lastName: String): Int
+
+}
+```
+
+`@Insert` 注解表示会将参数中传入的 User 对象插入数据库中，并且会将自动生成的主键 id 值返回。
+
+`@Insert`、`@Update`、`@Delete` 不用编写 SQL 语句。
+
+Room 支持编译时动态检查 SQL 语句语法。
 
 
 
+Database 写法是非常固定的，只需要定义好 3 个部分的内容：数据库的版本号、包含哪些实体类，以及提供 Dao 层的访问实例。
+
+```kotlin
+@Database(version = 1, entities = [User::class])
+abstract class AppDatabase : RoomDatabase() {
+
+    abstract fun userDao(): UserDao
+    
+    companion object {
+
+        private var instance: AppDatabase? = null
+
+        @Synchronized
+        fun getDatabase(context: Context): AppDatabase {
+            instance?.let {
+                return it
+            }
+            return Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "app_database")
+                .build().apply {
+                instance = this
+            }
+        }
+    }
+
+}
+```
+
+AppDatabase 类必须继承自 RoomDatabase 类，并且一定要使用 abstract 关键字将它声明成抽象类，并且提供相应的抽象方法，用于获取之前编写的 Dao 的实例。
+
+在 companion object 结构体中编写一个单例模式，使用 instance 变量来缓存 AppDatabase 实例。
+
+`databaseBuilder()` 方法接收 3 个参数，第一个参数一定要使用 applicationContext，不能使用普通的 context，否则容易出现内存泄漏的情况。
+
+```kotlin
+val userDao = AppDatabase.getDatabase(this).userDao()
+val user1 = User("Tom", "Brady", 40)
+val user2 = User("Tom", "Hanks", 63)
+addDataBtn.setOnClickListener {
+    thread {
+        user1.id = userDao.insertUser(user1)
+        user2.id = userDao.insertUser(user2)
+    }
+}
+updateDataBtn.setOnClickListener {
+    thread {
+        user1.age = 42
+        userDao.updateUser(user1)
+    }
+}
+deleteDataBtn.setOnClickListener {
+    thread {
+        userDao.deleteUserByLastName("Hanks")
+    }
+}
+queryDataBtn.setOnClickListener {
+    thread {
+        for (user in userDao.loadAllUsers()) {
+            Log.d("MainActivity", user.toString())
+        }
+    }
+}
+```
+
+由于数据库操作属于耗时操作，Room 默认是不允许在主线程中进行数据库操作的。
+
+为了方便测试，Room还提供了更加简单的方法用于允许在主线程中进行数据库操作。创建实例时加入 `allowMainThreadQueries()` 方法，这个方法建议只在测试环境下使用。
+
+```kotlin
+Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "app_database")
+    .allowMainThreadQueries()
+    .build()
+```
+
+### Room 的数据库升级
+
+如果目前只是在开发测试阶段，不想编写繁琐的数据库升级逻辑，在构建实例时加入 `fallbackToDestructiveMigration()` 方法，这样只要数据库进行了升级，Room 就会将当前的数据库销毁，然后再重现创建，之前数据库中的所有数据也就全部丢失了。
+
+---
+
+新增实体类的情况。
+
+```kotlin
+@Entity
+data class Book(var name: String, var pages: Int) {
+
+    @PrimaryKey(autoGenerate = true)
+    var id = 0L
+
+}
+
+@Dao
+interface BookDao {
+
+    @Insert
+    fun insertBook(book: Book): Long
+
+    @Query("select * from Book")
+    fun loadAllBooks(): List<Book>
+
+}
+
+@Database(version = 2, entities = [User::class, Book::class])
+abstract class AppDatabase : RoomDatabase() {
+
+    abstract fun userDao(): UserDao
+
+    abstract fun bookDao(): BookDao
+
+    companion object {
+
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("create table Book (id integer primary key autoincrement not null, name text not null, pages integer not null)")
+            }
+        }
 
 
+        private var instance: AppDatabase? = null
 
+        @Synchronized
+        fun getDatabase(context: Context): AppDatabase {
+            instance?.let {
+                return it
+            }
+            return Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "app_database")
+                .addMigrations(MIGRATION_1_2)
+                .build().apply {
+                instance = this
+            }
+        }
+    }
 
+}
+```
 
+version 升级成了 2，entities 中加入了 Book，提供了 `bookDao()` 方法用于获取 BookDao 实例。
+
+companion object 结构体中实现了一个 Migration 的匿名类，传入的 1 和 2 表示当数据库版本从 1 升级到 2 的时候就执行这个匿名类中的升级逻辑。命名为 MIGRATION_1_2 可读性更高。
+
+最后在构建 AppDatabase 实例时，加入一个 `addMigrations()` 方法，并把 MIGRATION_1_2 传入即可。
+
+---
+
+添加一列的情况。
+
+```kotlin
+@Entity
+data class Book(var name: String, var pages: Int, var author: String) {
+
+    @PrimaryKey(autoGenerate = true)
+    var id = 0L
+
+}
+
+@Database(version = 3, entities = [User::class, Book::class])
+abstract class AppDatabase : RoomDatabase() {
+
+    abstract fun userDao(): UserDao
+
+    abstract fun bookDao(): BookDao
+
+    companion object {
+
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("create table Book (id integer primary key autoincrement not null, name text not null, pages integer not null)")
+            }
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("alter table Book add column author text not null default 'unknown'")
+            }
+        }
+
+        private var instance: AppDatabase? = null
+
+        @Synchronized
+        fun getDatabase(context: Context): AppDatabase {
+            instance?.let {
+                return it
+            }
+            return Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "app_database")
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .build().apply {
+                instance = this
+            }
+        }
+    }
+
+}
+```
 

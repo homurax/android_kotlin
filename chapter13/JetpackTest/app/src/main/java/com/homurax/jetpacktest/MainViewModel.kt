@@ -7,6 +7,16 @@ import androidx.lifecycle.ViewModel
 
 class MainViewModel(countReserved: Int) : ViewModel() {
 
+    private val refreshLiveData = MutableLiveData<Any?>()
+
+    val refreshResult = Transformations.switchMap(refreshLiveData) {
+        Repository.getUser("")
+    }
+
+    fun refresh() {
+        refreshLiveData.value = refreshLiveData.value
+    }
+
     private val userLiveData = MutableLiveData<User>()
 
     val userName: LiveData<String> = Transformations.map(userLiveData) { user ->
