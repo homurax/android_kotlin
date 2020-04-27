@@ -11,4 +11,5 @@
     <string name="tasks">Tasks</string>
     <string name="tony_green">Tony Green</string>
     <string name="example_gmail_com">example@gmail.com</string>
+    <string name="hello_world">Hello world</string>
 </resources>
