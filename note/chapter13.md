@@ -831,11 +831,130 @@ WorkManager 可以用，但是不要依赖它去实现什么核心功能，因�
 
 国产 ROM 绝大多数在进行 Android 系统定制的时候大多数会增加一个键关闭的功能，允许用户一键杀死所有非白名单的应用程序。被杀死的应用程序即无法接收广播，也无法运行 WorkManager 的后台任务。
 
+## Kotlin：使用 DSL 构建专用的语法结构
 
+领域特定语言是编程语言赋予开发者的一种特殊能力，通过它可以编写出一些看似脱离其原始语法结构的代码，从而构建出一种专有的语法结构。
 
+使用 infix 函数构建出的特有语法结构就属于 DSL 。
 
+```kotlin
+class Dependency {
 
+    val libraries = ArrayList<String>()
 
+    fun implementation(lib: String) {
+        libraries.add(lib)
+    }
 
+}
 
+fun dependencies(block: Dependency.() -> Unit): List<String> {
+    val dependency = Dependency()
+    dependency.block()
+    return dependency.libraries
+}
+
+fun main() {
+
+    val libraries = dependencies {
+        implementation("androidx.lifecycle:lifecycle-extensions:2.2.0")
+        implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.2.0")
+    }
+    for (lib in libraries) {
+        println(lib)
+    }
+
+}
+```
+
+语法结构使用上和 `build.gradle` 文件中使用的语法结果并不完全相同，这主要是因为 Kotlin 和 Groovy 在语法层面还是有一定差别的。
+
+这种语法结构比直接调用 Dependency 对象的 `implementation()` 方法要更加直观一些，需要添加的依赖库越多，使用 DSL 写法的优势就会越明显。
+
+---
+
+```kotlin
+class Td {
+    var content = ""
+    fun html() = "\n\t\t<td>$content</td>"
+}
+
+class Tr {
+    private val children = ArrayList<Td>()
+
+    fun td(block: Td.() -> String) {
+        val td = Td()
+        td.content = td.block()
+        children.add(td)
+    }
+
+    fun html(): String {
+        val builder = StringBuilder()
+        builder.append("\n\t<tr>")
+        for (childTag in children) {
+            builder.append(childTag.html())
+        }
+        builder.append("\n\t</tr>")
+        return builder.toString()
+    }
+}
+
+class Table {
+    private val children = ArrayList<Tr>()
+
+    fun tr(block: Tr.() -> Unit) {
+        val tr = Tr()
+        tr.block()
+        children.add(tr)
+    }
+
+    fun html(): String {
+        val builder = StringBuilder()
+        builder.append("<table>")
+        for (childTag in children) {
+            builder.append(childTag.html())
+        }
+        builder.append("\n</table>")
+        return  builder.toString()
+    }
+}
+
+fun table(block: Table.() -> Unit): String {
+    val table = Table()
+    table.block()
+    return table.html()
+}
+
+fun main() {
+    
+    val html = table {
+        tr {
+            td { "Apple" }
+            td { "Grape" }
+            td { "Orange" }
+        }
+        tr {
+            td { "Pear" }
+            td { "Banana" }
+            td { "Watermelon" }
+        }
+    }
+    println(html)
+}
+```
+
+DSL 中也可以使用 Kotlin 的其他语法特性。
+
+```kotlin
+val html = table {
+    repeat(2) {
+        tr {
+            val fruits = listOf("Apple", "Grape", "Orange")
+            for (fruit in fruits) {
+                td { fruit }
+            }
+        }
+    }
+}
+```
 
