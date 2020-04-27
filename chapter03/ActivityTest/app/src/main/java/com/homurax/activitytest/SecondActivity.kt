@@ -25,6 +25,11 @@ class SecondActivity : BaseActivity() {
         Log.d("SecondActivity", "Task is is $taskId")
         setContentView(R.layout.second_layout)
 
+        // Serializable
+        // val person = intent?.getSerializableExtra("person_date") as Person
+        // Parcelable
+        val person = intent?.getParcelableExtra("person_date") as Person
+
         intent?.getStringExtra("extra_data")?.let { Log.d("SecondActivity", it) }
 
         button2.setOnClickListener {

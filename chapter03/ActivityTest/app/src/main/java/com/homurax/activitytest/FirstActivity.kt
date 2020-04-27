@@ -52,7 +52,14 @@ class FirstActivity : BaseActivity() {
             // standard
             // val intent = Intent(this, FirstActivity::class.java)
             // singleTop
-            val intent = Intent(this, SecondActivity::class.java)
+            // val intent = Intent(this, SecondActivity::class.java)
+            // startActivity(intent)
+
+            // Serializable Parcelable
+            val person = Person("Tom", 20)
+            val intent = Intent(this, SecondActivity::class.java).apply {
+                putExtra("person_date", person)
+            }
             startActivity(intent)
         }
     }

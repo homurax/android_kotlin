@@ -26,3 +26,5 @@
 
 [第 13 章 - 探究 Jetpack](/note/chapter13.md)
 
+[第 14 章 - 高级技巧](/note/chapter14.md)
+
