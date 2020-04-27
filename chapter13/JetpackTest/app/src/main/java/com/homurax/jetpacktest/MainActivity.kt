@@ -9,7 +9,9 @@ import androidx.core.content.edit
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
+import androidx.work.*
 import kotlinx.android.synthetic.main.activity_main.*
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
@@ -79,6 +81,22 @@ class MainActivity : AppCompatActivity() {
                     Log.d("MainActivity", user.toString())
                 }
             }
+        }
+        doWorkBtn.setOnClickListener {
+            val request = OneTimeWorkRequest.Builder(SimpleWorker::class.java)
+                .setInitialDelay(5, TimeUnit.MINUTES)
+                .addTag("simple")
+                .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.MINUTES)
+                .build()
+            WorkManager.getInstance(this).enqueue(request)
+            WorkManager.getInstance(this).getWorkInfoByIdLiveData(request.id)
+                .observe(this, Observer { workInfo ->
+                    if (workInfo.state == WorkInfo.State.SUCCEEDED) {
+                        Log.d("MainActivity", "do work succeeded")
+                    } else if (workInfo.state == WorkInfo.State.FAILED) {
+                        Log.d("MainActivity", "do work failed")
+                    }
+                })
         }
     }
 

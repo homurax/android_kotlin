@@ -674,3 +674,168 @@ abstract class AppDatabase : RoomDatabase() {
 }
 ```
 
+## WorkManager
+
+基本上 Android 系统每发布一个新版本，后台权限都会被进一步收紧。
+
+从 4.4 系统开始 AlarmManager 的触发时间由原来的精准变为不精准；
+
+5.0 系统中加入了 JobScheduler 来处理后台任务；
+
+6.0 系统中引入了 Doze 和 App Standby 模式用于降低手机被后台唤醒的频率；
+
+从 8.0 系统开始直接禁用了 Service 的后台功能，只允许使用前台 Service。
+
+
+
+Google 退出了 WorkManager 组件用于处理一些要求定时执行的任务，它可以根据操作系统的版本自动选择底层是使用 AlarmManager 还是 JobScheduler 实现，从而降低使用成本。另外还支持周期性任务、链式任务处理等功能。WorkManager 可以保证即使在应用退出甚至手机重启的情况下，之前注册的任务仍然会得到执行。
+
+另外，使用 WorkManager 注册的周期性任务不能保证一定会准时执行，系统为了减少电量消耗，可能会将触发时间接近的几个任务放在一起执行，这样可以大幅度地减少 CPU 被唤醒的次数，从而有效延长电池的使用时间。
+
+### WorkManager 的基本用法
+
+```
+implementation "androidx.work:work-runtime:2.3.4"
+```
+
+WorkManager 的基本用法主要分为以下 3 步：
+
+- 定义一个后台任务，并实现具体的任务逻辑。
+- 配置该后台任务的运行条件和约束信息，并构建后台任务请求。
+- 将该后台任务请求传入 WorkManager 的 `enqueue()` 方法中，系统会在合适的时间运行。
+
+---
+
+**第一步**
+
+```kotlin
+class SimpleWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
+
+    override fun doWork(): Result {
+        Log.d("SimpleWorker", "do work in SimpleWorker")
+        return Result.success()
+    }
+
+}
+```
+
+每一个后台任务都必须继承自 Worker 类，并调用它唯一的构造函数。然后重写父类的 `doWork()` 方法，在其中编写具体的后台任务逻辑。
+
+`doWork()` 方法不会运行在主线程中，要求返回一个 Result 对象，用于表示任务的运行结果。成功就返回 `Result.success()`，失败就返回 `Result.failure()`。`Result.retry()` 也代表着失败，但是可以结合 `WorkRequest.Builder` 的 `setBackoffCriteria()` 方法来重新执行任务。
+
+**第二步**
+
+最基本的配置：
+
+````kotlin
+val request = OneTimeWorkRequest.Builder(SimpleWorker::class.java).build()
+````
+
+`OneTimeWorkRequest.Builder` 是 `WorkRequest.Builder` 的子类，用于构建单次运行的后台任务请求。`WorkRequest.Builder` 还有一个子类 `PeriodicWorkRequest.Builder` 可用于构建周期性任务的后台请求，但是为了降低设备性能消耗，运行周期间隔不能短于 15 分钟：
+
+```kotlin
+val request = PeriodicWorkRequest.Builder(SimpleWorker::class.java, 15, TimeUnit.MINUTES).build()
+```
+
+**第三步**
+
+```kotlin
+WorkManager.getInstance(this).enqueue(request)
+```
+
+### 使用 WorkManager 处理复杂的任务
+
+让后台任务**在指定的延迟时间后运行**，使用 `setInitialDelay()` 方法：
+
+```kotlin
+val request = OneTimeWorkRequest.Builder(SimpleWorker::class.java)
+    .setInitialDelay(5, TimeUnit.MINUTES)
+    .build()
+```
+
+给后台任务请求**添加标签**：
+
+```kotlin
+val request = OneTimeWorkRequest.Builder(SimpleWorker::class.java)
+    ...
+    .addTag("simple")
+    .build()
+```
+
+**通过标签取消后台任务请求**：
+
+```kotlin
+WorkManager.getInstance(this).cancelAllWorkByTag("simple")
+```
+
+**通过 id 取消后台任务请求**：
+
+```kotlin
+WorkManager.getInstance(this).cancelWorkById(request.id)
+```
+
+**一次性取消所有后台任务请求**：
+
+```kotlin
+WorkManager.getInstance(this).cancelAllWork()
+```
+
+**重新执行任务**：
+
+```kotlin
+val request = OneTimeWorkRequest.Builder(SimpleWorker::class.java)
+    ...
+    .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.MINUTES)
+    .build()
+```
+
+第一个参数用于指定如果任务再次执行失败，下次重试应该以什么样的形式延迟。LINEAR 代表下次重试时间以线性的方式延迟；EXPONENTIAL 代表下次重试时间以指数的方式延迟。
+
+第二个和第三个参数用于指定在多久之后重新执行任务，时间最短不能少于 10 秒钟。
+
+**监听后台任务的运行结果**：
+
+```kotlin
+WorkManager.getInstance(this).getWorkInfoByIdLiveData(request.id)
+    .observe(this, Observer { workInfo ->
+        if (workInfo.state == WorkInfo.State.SUCCEEDED) {
+            Log.d("MainActivity", "do work succeeded")
+        } else if (workInfo.state == WorkInfo.State.FAILED) {
+            Log.d("MainActivity", "do work failed")
+        }
+    })
+```
+
+监听 `getWorkInfoByIdLiveData()` 返回的 LiveData 对象。也可以调用 `getWorkInfosByTagLiveData()` 监听同一标签名下所有的后台任务请求的运行结果。
+
+**链式任务**
+
+假设定了 3 个独立的后台任务：同步数据、压缩数据和上传数据。现在实现先同步、再压缩、最后上传的功能。
+
+```kotlin
+val sync = ...
+val compress = ...
+val upload = ...
+WorkManager.getInstance(this)
+    .beginWith(sync)
+    .then(compress)
+    .then(upload)
+    .enqueue()
+```
+
+通过 `beginWith()` 方法开启一个链式任务，在前一个后台任务运行成功之后，下一个后台任务才会运行。
+
+---
+
+WorkManager 可以用，但是不要依赖它去实现什么核心功能，因为在国产手机上可能会非常不稳定。
+
+国产 ROM 绝大多数在进行 Android 系统定制的时候大多数会增加一个键关闭的功能，允许用户一键杀死所有非白名单的应用程序。被杀死的应用程序即无法接收广播，也无法运行 WorkManager 的后台任务。
+
+
+
+
+
+
+
+
+
