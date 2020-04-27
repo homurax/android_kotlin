@@ -287,3 +287,13 @@ object Util {
 Kotlin 取消了按位运算符的写法，改成了使用英文关键字。
 
 Kotlin 中的 `and` 关键字对应 Java 中的 `&` 运算符；`or` 关键字对应 Java 中的 `|` 运算符；`xor` 关键字对应 Java 中的 `^` 运算符。
+
+## Kotlin：Java 和 Kotlin 代码之间的转换
+
+Android Studio 中打开任意一个 Kotlin 文件，向其中粘贴 Java 代码，会自动询问是否转换为 Kotlin 代码。
+
+也可右键 Java 文件，选择 `Convert Java File to Kotlin File` 。
+
+
+
+Kotlin 代码可以通过 `Tools → Kotlin → Show Kotlin Bytecod ` 查看 Kotlin 字节码，通过 Decompile 功能可以将 Kotlin 字节码反编译成 Java 代码。反编译出来的代码可能无法像正常编写的 Java 代码那样直接运行，但是非常有利于帮助理解诸多 Kotlin 特性背后的实现原理。
