@@ -1064,15 +1064,242 @@ class PlaceViewModel : ViewModel() {
 }
 ```
 
+### 实现 UI 层代码
 
+***PlaceAdapter***
 
+```kotlin
+class PlaceAdapter(private val fragment: Fragment, private val placeList: List<Place>) :
+    RecyclerView.Adapter<PlaceAdapter.ViewHolder>() {
 
+    inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val placeName: TextView = view.findViewById(R.id.placeName)
+        val placeAddress: TextView = view.findViewById(R.id.placeAddress)
+    }
 
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.place_item, parent, false)
+        return ViewHolder(view)
+    }
 
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val place = placeList[position]
+        holder.placeName.text = place.name
+        holder.placeAddress.text = place.address
+    }
 
+    override fun getItemCount() = placeList.size
 
+}
+```
 
+## 显示天气信息
 
+### 实现逻辑层代码
+
+***RealtimeResponse***
+
+```kotlin
+class RealtimeResponse(val status: String, val result: Result) {
+
+    class AQI(val chn: Float)
+
+    class AirQuality(val aqi: AQI)
+
+    class Realtime(val skycon: String, val temperature: Float, @SerializedName("air_quality") val airQuality: AirQuality)
+
+    class Result(val realtime: Realtime)
+
+}
+```
+
+***DailyResponse***
+
+```kotlin
+class DailyResponse(val status: String, val result: Result) {
+
+    class LifeDescription(val desc: String)
+
+    class LifeIndex(val coldRisk: List<LifeDescription>, val carWashing: List<LifeDescription>, val ultraviolet: List<LifeDescription>, val dressing: List<LifeDescription>)
+
+    class Skycon(val value: String, val date: Date)
+
+    class Result(val daily: Daily)
+
+    class Temperature(val max: Float, val min: Float)
+
+    class Daily(val temperature: List<Temperature>, val skycon: List<Skycon>, @SerializedName("life_index") val lifeIndex: LifeIndex)
+
+}
+```
+
+***Weather***
+
+```kotlin
+class Weather(val realtime: RealtimeResponse.Realtime, val daily: DailyResponse.Daily)
+```
+
+***WeatherService***
+
+```kotlin
+interface WeatherService {
+
+    @GET("v2.5/${SunnyWeatherApplication.TOKEN}/{lng},{lat}/realtime.json")
+    fun getRealtimeWeather(@Path("lng") lng: String, @Path("lat") lat: String): Call<RealtimeResponse>
+
+    @GET("v2.5/${SunnyWeatherApplication.TOKEN}/{lng},{lat}/daily.json")
+    fun getDailyWeather(@Path("lng") lng: String, @Path("lat") lat: String): Call<DailyResponse>
+
+}
+```
+
+***Repository***
+
+```kotlin
+fun refreshWeather(lng: String, lat: String) = liveData(Dispatchers.IO) {
+    val result = try {
+        coroutineScope {
+            val deferredRealtime = async {
+                SunnyWeatherNetwork.getRealtimeWeather(lng, lat)
+            }
+            val deferredDaily = async {
+                SunnyWeatherNetwork.getDailyWeather(lng, lat)
+            }
+            val realtimeResponse = deferredRealtime.await()
+            val dailyResponse = deferredDaily.await()
+
+            if (realtimeResponse.status == "ok" && dailyResponse.status == "ok") {
+                val weather =
+                    Weather(realtimeResponse.result.realtime, dailyResponse.result.daily)
+                Result.success(weather)
+            } else {
+                Result.failure<Weather>(
+                    RuntimeException(
+                        "realtime response status is ${realtimeResponse.status}" +
+                                "daily response status is ${dailyResponse.status}"
+                    )
+                )
+            }
+        }
+    } catch (e: Exception) {
+        Result.failure<Weather>(e)
+    }
+    emit(result)
+}
+```
+
+统一异常处理：
+
+```kotlin
+private fun <T> fire(context: CoroutineContext, block: suspend () -> Result<T>) =
+    liveData<Result<T>>(context) {
+        val result = try {
+            block()
+        } catch (e: Exception) {
+            Result.failure<T>(e)
+        }
+        emit(result)
+    }
+
+fun searchPlaces(query: String) = fire(Dispatchers.IO) {
+    val placeResponse = SunnyWeatherNetwork.searchPlaces(query)
+    if (placeResponse.status == "ok") {
+        val places = placeResponse.places
+        Result.success(places)
+    } else {
+        Result.failure(RuntimeException("response status is ${placeResponse.status}"))
+    }
+}
+
+fun refreshWeather(lng: String, lat: String, placeName: String) = fire(Dispatchers.IO) {
+    coroutineScope {
+        val deferredRealtime = async {
+            SunnyWeatherNetwork.getRealtimeWeather(lng, lat)
+        }
+        val deferredDaily = async {
+            SunnyWeatherNetwork.getDailyWeather(lng, lat)
+        }
+        val realtimeResponse = deferredRealtime.await()
+        val dailyResponse = deferredDaily.await()
+        if (realtimeResponse.status == "ok" && dailyResponse.status == "ok") {
+            val weather = Weather(realtimeResponse.result.realtime, dailyResponse.result.daily)
+            Result.success(weather)
+        } else {
+            Result.failure(
+                RuntimeException(
+                    "realtime response status is ${realtimeResponse.status}" +
+                            "daily response status is ${dailyResponse.status}"
+                )
+            )
+        }
+    }
+}
+```
+
+注意 `liveData()` 函数的代码块中，是拥有挂起函数上下文的，当回调到 Lambda 表达式中，代码就没有挂起函数上下文了，但是实际上 Lambda 表达式中的代码也一定是在挂起函数中运行的。
+
+所以需要在函数类型前声明一个 suspend 关键字，以表示所有传入的 Lambda 表达式中的代码也是拥有挂起函数上下文的。
+
+***WeatherViewModel***
+
+```kotlin
+class WeatherViewModel : ViewModel() {
+
+    private val locationLiveData = MutableLiveData<Location>()
+
+    var locationLng = ""
+
+    var locationLat = ""
+
+    var placeName = ""
+
+    val weatherLiveData = Transformations.switchMap(locationLiveData) { location ->
+        Repository.refreshWeather(location.lng, location.lat, placeName)
+    }
+
+    fun refreshWeather(lng: String, lat: String) {
+        locationLiveData.value = Location(lng, lat)
+    }
+
+}
+```
+
+### 实现 UI 层代码
+
+***Sky*** 天气转换
+
+```kotlin
+class Sky (val info: String, val icon: Int, val bg: Int)
+
+private val sky = mapOf(
+    "CLEAR_DAY" to Sky("晴", R.drawable.ic_clear_day, R.drawable.bg_clear_day),
+    "CLEAR_NIGHT" to Sky("晴", R.drawable.ic_clear_night, R.drawable.bg_clear_night),
+    "PARTLY_CLOUDY_DAY" to Sky("多云", R.drawable.ic_partly_cloud_day, R.drawable.bg_partly_cloudy_day),
+    "PARTLY_CLOUDY_NIGHT" to Sky("多云", R.drawable.ic_partly_cloud_night, R.drawable.bg_partly_cloudy_night),
+    "CLOUDY" to Sky("阴", R.drawable.ic_cloudy, R.drawable.bg_cloudy),
+    "WIND" to Sky("大风", R.drawable.ic_cloudy, R.drawable.bg_wind),
+    "LIGHT_RAIN" to Sky("小雨", R.drawable.ic_light_rain, R.drawable.bg_rain),
+    "MODERATE_RAIN" to Sky("中雨", R.drawable.ic_moderate_rain, R.drawable.bg_rain),
+    "HEAVY_RAIN" to Sky("大雨", R.drawable.ic_heavy_rain, R.drawable.bg_rain),
+    "STORM_RAIN" to Sky("暴雨", R.drawable.ic_storm_rain, R.drawable.bg_rain),
+    "THUNDER_SHOWER" to Sky("雷阵雨", R.drawable.ic_thunder_shower, R.drawable.bg_rain),
+    "SLEET" to Sky("雨夹雪", R.drawable.ic_sleet, R.drawable.bg_rain),
+    "LIGHT_SNOW" to Sky("小雪", R.drawable.ic_light_snow, R.drawable.bg_snow),
+    "MODERATE_SNOW" to Sky("中雪", R.drawable.ic_moderate_snow, R.drawable.bg_snow),
+    "HEAVY_SNOW" to Sky("大雪", R.drawable.ic_heavy_snow, R.drawable.bg_snow),
+    "STORM_SNOW" to Sky("暴雪", R.drawable.ic_heavy_snow, R.drawable.bg_snow),
+    "HAIL" to Sky("冰雹", R.drawable.ic_hail, R.drawable.bg_snow),
+    "LIGHT_HAZE" to Sky("轻度雾霾", R.drawable.ic_light_haze, R.drawable.bg_fog),
+    "MODERATE_HAZE" to Sky("中度雾霾", R.drawable.ic_moderate_haze, R.drawable.bg_fog),
+    "HEAVY_HAZE" to Sky("重度雾霾", R.drawable.ic_heavy_haze, R.drawable.bg_fog),
+    "FOG" to Sky("雾", R.drawable.ic_fog, R.drawable.bg_fog),
+    "DUST" to Sky("浮尘", R.drawable.ic_fog, R.drawable.bg_fog)
+    )
+
+fun getSky(skycon: String): Sky {
+    return sky[skycon] ?: sky["CLEAR_DAY"]!!
+}
+```
 
 
 
