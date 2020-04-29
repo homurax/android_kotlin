@@ -1301,5 +1301,336 @@ fun getSky(skycon: String): Sky {
 }
 ```
 
+***WeatherActivity***
+
+```kotlin
+class WeatherActivity : AppCompatActivity() {
+
+    val viewModel by lazy { ViewModelProvider(this).get(WeatherViewModel::class.java) }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_weather)
+
+        if (viewModel.locationLng.isEmpty()) {
+            viewModel.locationLng = intent.getStringExtra("location_lng") ?: ""
+        }
+        if (viewModel.locationLat.isEmpty()) {
+            viewModel.locationLat = intent.getStringExtra("location_lat") ?: ""
+        }
+        if (viewModel.placeName.isEmpty()) {
+            viewModel.placeName = intent.getStringExtra("place_name") ?: ""
+        }
+        viewModel.weatherLiveData.observe(this, Observer { result ->
+            val weather = result.getOrNull()
+            if (weather != null) {
+                showWeatherInfo(weather)
+            } else {
+                "无法成功获取天气信息".showToast()
+                result.exceptionOrNull()?.printStackTrace()
+            }
+        })
+        viewModel.refreshWeather(viewModel.locationLng, viewModel.locationLat)
+    }
+
+    private fun showWeatherInfo(weather: Weather) {
+        // 填充 now.xml 布局中数据
+        placeName.text = viewModel.placeName
+        val realtime = weather.realtime
+        val daily = weather.daily
+        val currentTempText = "${realtime.temperature.toInt()} ℃"
+        currentTemp.text = currentTempText
+        currentSky.text = getSky(realtime.skycon).info
+        val currentPM25Text = "空气指数 ${realtime.airQuality.aqi.chn.toInt()}"
+        currentAQI.text = currentPM25Text
+        nowLayout.setBackgroundResource(getSky(realtime.skycon).bg)
+
+        // 填充 forecast.xml 布局中的数据
+        forecastLayout.removeAllViews()
+        val days = daily.skycon.size
+        for (i in 0 until days) {
+            val skycon = daily.skycon[i]
+            val temperature = daily.temperature[i]
+            val view = LayoutInflater.from(this).inflate(R.layout.forecast_item, forecastLayout, false)
+            val dateInfo = view.findViewById(R.id.dateInfo) as TextView
+            val skyIcon = view.findViewById(R.id.skyIcon) as ImageView
+            val skyInfo = view.findViewById(R.id.skyInfo) as TextView
+            val temperatureInfo = view.findViewById(R.id.temperatureInfo) as TextView
+            val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            dateInfo.text = simpleDateFormat.format(skycon.date)
+            val sky = getSky(skycon.value)
+            skyIcon.setImageResource(sky.icon)
+            skyInfo.text = sky.info
+            val tempText = "${temperature.min.toInt()} ~ ${temperature.max.toInt()} ℃"
+            temperatureInfo.text = tempText
+            forecastLayout.addView(view)
+        }
+
+        // 填充 life_index.xml 布局中的数据
+        val lifeIndex = daily.lifeIndex
+        coldRiskText.text = lifeIndex.coldRisk[0].desc
+        dressingText.text = lifeIndex.dressing[0].desc
+        ultravioletText.text = lifeIndex.ultraviolet[0].desc
+        carWashingText.text = lifeIndex.carWashing[0].desc
+        weatherLayout.visibility = View.VISIBLE
+    }
+}
+```
+
+背景栏和状态栏融合在一起
+
+```kotlin
+// 当前 Activity 的 DecorView
+val decorView = window.decorView
+// 改变系统 UI 显示  Activity 的布局显示在状态栏上面
+decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+// 状态栏设置成透明色
+window.statusBarColor = Color.TRANSPARENT
+```
+
+### 记录选中的城市
+
+***PlaceDao***
+
+```kotlin
+object PlaceDao {
+
+    private fun sharedPreferences() = SunnyWeatherApplication.context.getSharedPreferences("sunny_weather", Context.MODE_PRIVATE)
+
+    fun savePlace(place: Place) {
+        sharedPreferences().edit {
+            putString("place", Gson().toJson(place))
+        }
+    }
+
+    fun getSavedPlace(): Place {
+        val placeJson = sharedPreferences().getString("place", "")
+        return Gson().fromJson(placeJson, Place::class.java)
+    }
+
+    fun isPlaceSaved() = sharedPreferences().contains("place")
+
+}
+```
+
+***Repository***
+
+```kotlin
+object Repository {
+
+    fun savePlace(place: Place) = PlaceDao.savePlace(place)
+
+    fun getSavedPlace() = PlaceDao.getSavedPlace()
+
+    fun isPlaceSaved() = PlaceDao.isPlaceSaved()
+    
+    ...
+}
+```
+
+***PlaceViewModel***
+
+```kotlin
+class PlaceViewModel : ViewModel() {
+
+    ...
+
+    // 没有开启线程 不需要借助 LiveData 对象来观察
+    fun savePlace(place: Place) = Repository.savePlace(place)
+
+    fun getSavedPlace() = Repository.getSavedPlace()
+
+    fun isPlaceSaved() = Repository.isPlaceSaved()
+
+}
+```
+
+***PlaceAdapter***
+
+```kotlin
+class PlaceAdapter(private val fragment: PlaceFragment, private val placeList: List<Place>) :
+
+    ...
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.place_item, parent, false)
+        val holder = ViewHolder(view)
+        holder.itemView.setOnClickListener {
+            val position = holder.adapterPosition
+            val place = placeList[position]
+            val intent = Intent(parent.context, WeatherActivity::class.java).apply {
+                putExtra("location_lng", place.location.lng)
+                putExtra("location_lat", place.location.lat)
+                putExtra("place_name", place.name)
+            }
+            // 储存选中的城市
+            fragment.viewModel.savePlace(place)
+            fragment.startActivity(intent)
+            fragment.activity?.finish()
+        }
+        return holder
+    }
+
+    ...
+
+}
+```
+
+***PlaceFragment***
+
+```kotlin
+class PlaceFragment : Fragment() {
+
+    ...
+    
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        super.onActivityCreated(savedInstanceState)
+
+        if (activity is MainActivity && viewModel.isPlaceSaved()) {
+            val place = viewModel.getSavedPlace()
+            val intent = Intent(context, WeatherActivity::class.java).apply {
+                putExtra("location_lng", place.location.lng)
+                putExtra("location_lat", place.location.lat)
+                putExtra("place_name", place.name)
+            }
+            startActivity(intent)
+            activity?.finish()
+            return
+        }
+
+        ...
+    }
+
+}
+```
+
+已储存城市就使用储存的信息直接跳转并传递给 WeatherActivity 。
+
+## 手动刷新天气和切换城市
+
+***WeatherActivity***
+
+```kotlin
+class WeatherActivity : AppCompatActivity() {
+    ...
+    override fun onCreate(savedInstanceState: Bundle?) {
+        ...
+        swipeRefresh.setColorSchemeResources(R.color.colorPrimary)
+        refreshWeather()
+        swipeRefresh.setOnRefreshListener {
+            refreshWeather()
+        }
+    }
+
+    fun refreshWeather() {
+        viewModel.refreshWeather(viewModel.locationLng, viewModel.locationLat)
+        swipeRefresh.isRefreshing = true
+    }
+    ...
+}
+```
+
+### 切换城市
+
+***WeatherActivity***
+
+```kotlin
+class WeatherActivity : AppCompatActivity() {
+    ...
+    override fun onCreate(savedInstanceState: Bundle?) {
+        ...
+        // 打开滑动菜单
+        navBtn.setOnClickListener {
+            drawerLayout.openDrawer(GravityCompat.START)
+        }
+        // 监听 DrawerLayout 状态
+        // 滑动菜单被隐藏的时候 同时也要隐藏输入法
+        drawerLayout.addDrawerListener(object : DrawerLayout.DrawerListener {
+            override fun onDrawerStateChanged(newState: Int) {}
+
+            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {}
+
+            override fun onDrawerOpened(drawerView: View) {}
+
+            override fun onDrawerClosed(drawerView: View) {
+                val manager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                manager.hideSoftInputFromWindow(drawerView.windowToken, InputMethodManager.HIDE_NOT_ALWAYS)
+            }
+        })
+    }
+    ...
+}
+```
+
+***PlaceFragment***
+
+```kotlin
+class PlaceFragment : Fragment() {
+    ...
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        ...
+        // 当 PlaceFragment 被嵌入 MainActivity 中且已经存在被选中的城市时才跳转 WeatherActivity
+        // 避免 WeatherActivity 中切换城市时无限循环跳转
+        if (activity is MainActivity && viewModel.isPlaceSaved()) {
+            val place = viewModel.getSavedPlace()
+            val intent = Intent(context, WeatherActivity::class.java).apply {
+                putExtra("location_lng", place.location.lng)
+                putExtra("location_lat", place.location.lat)
+                putExtra("place_name", place.name)
+            }
+            startActivity(intent)
+            activity?.finish()
+            return
+        }
+        ...
+    }
+
+}
+```
+
+***PlaceAdapter***
+
+```kotlin
+class PlaceAdapter(private val fragment: PlaceFragment, private val placeList: List<Place>) :
+    RecyclerView.Adapter<PlaceAdapter.ViewHolder>() {
+    ...
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        ...
+        holder.itemView.setOnClickListener {
+            val position = holder.adapterPosition
+            val place = placeList[position]
+
+            val activity = fragment.activity
+            // 如果已经处于 WeatherActivity 中就关闭滑动菜单 赋值新的坐标与名称 然后刷新
+            if (activity is WeatherActivity) {
+                activity.drawerLayout.closeDrawers()
+                activity.viewModel.locationLng = place.location.lng
+                activity.viewModel.locationLat = place.location.lat
+                activity.viewModel.placeName = place.name
+                activity.refreshWeather()
+            } else {
+                val intent = Intent(parent.context, WeatherActivity::class.java).apply {
+                    putExtra("location_lng", place.location.lng)
+                    putExtra("location_lat", place.location.lat)
+                    putExtra("place_name", place.name)
+                }
+                fragment.startActivity(intent)
+                activity?.finish()
+            }
+            // 储存选中的城市
+            fragment.viewModel.savePlace(place)
+        }
+        return holder
+    }
+    ...
+}
+```
+
+
+
+
+
+
+
 
 

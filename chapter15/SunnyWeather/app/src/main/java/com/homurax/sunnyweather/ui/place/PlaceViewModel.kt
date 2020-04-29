@@ -18,4 +18,11 @@ class PlaceViewModel : ViewModel() {
         searchLiveData.value = query
     }
 
+    // 没有开启线程 不需要借助 LiveData 对象来观察
+    fun savePlace(place: Place) = Repository.savePlace(place)
+
+    fun getSavedPlace() = Repository.getSavedPlace()
+
+    fun isPlaceSaved() = Repository.isPlaceSaved()
+
 }
