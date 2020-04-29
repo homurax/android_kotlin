@@ -2,6 +2,7 @@ package com.homurax.sunnyweather.ui.weather
 
 import android.content.Context
 import android.graphics.Color
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -30,14 +31,15 @@ class WeatherActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= 21) {
+            // 当前 Activity 的 DecorView
+            val decorView = window.decorView
+            // 改变系统 UI 显示  Activity 的布局显示在状态栏上面
+            decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            // 状态栏设置成透明色
+            window.statusBarColor = Color.TRANSPARENT
+        }
         setContentView(R.layout.activity_weather)
-
-        // 当前 Activity 的 DecorView
-        val decorView = window.decorView
-        // 改变系统 UI 显示  Activity 的布局显示在状态栏上面
-        decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-        // 状态栏设置成透明色
-        window.statusBarColor = Color.TRANSPARENT
 
         if (viewModel.locationLng.isEmpty()) {
             viewModel.locationLng = intent.getStringExtra("location_lng") ?: ""

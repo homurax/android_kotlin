@@ -1626,11 +1626,59 @@ class PlaceAdapter(private val fragment: PlaceFragment, private val placeList: L
 }
 ```
 
+## 制作 App 的图标
+
+在过去，Android 应用程序的图标都应该放到相应分辨率的 mipmap 目录下，从 Android 8.0 系统开始，Google 建议应该使用前景和背景分离的图标设计方式。
+
+应用程序的图标应该被分为两层：前景层和背景层。前景层用来展示应用图标的 Logo，背景层用来衬托应用图标的 Logo。背景层在设计的时候只允许定义颜色和纹理，不能定义形状。
+
+手机厂商会在图标的前景层和背景层之上再盖上一层 mask，这样可以将手机上所有应用程序的图标都剪裁成相同的形状，从而统一图标的设计规范。
+
+![](../images/chapter15/icon_design_adaptive01.png)
+
+![](../images/chapter15/icon_design_adaptive02.png)
+
+选中 res 目录 `File - New - Image Asset` 打开 Asset Studio 工具。
+
+左侧是操作区域，右侧是预览区域。
+
+![](../images/chapter15/asset_studio.png)
+
+编辑前景层/编辑背景层/编辑老版本系统的图标。
+
+预览图标中的圆圈叫做安全区域，必须保证图标的前景层完全处于安全区域中才行，否则可能会出现应用图标的 Logo 被手机厂商的 mask 裁剪掉的情况。
 
 
 
+`mipmap-anydpi-v26` 目录中放的不是图片，而是 xml 文件。只要是 Android 8.0 及以上系统的手机，都会使用这个目录下的文件作为图标。
+
+***ic_launcher.xml***
+
+```xml
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+</adaptive-icon>
+```
 
 
 
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.homurax.sunnyweather">
+    ...
+    <application
+        android:name=".SunnyWeatherApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+        ...
+    </application>
+</manifest>
+```
 
+`android:icon` 指定应用程序图标，`android:roundIcon` 是只适用于 Android 7.1 系统的过度版本，很快就被 8.0 系统的新图标适配方案所替代了，可以不必关心它。
 
