@@ -1682,3 +1682,71 @@ class PlaceAdapter(private val fragment: PlaceFragment, private val placeList: L
 
 `android:icon` 指定应用程序图标，`android:roundIcon` 是只适用于 Android 7.1 系统的过度版本，很快就被 8.0 系统的新图标适配方案所替代了，可以不必关心它。
 
+## 生成正式签名的 APK 文件
+
+Android 系统要求只有签名后的 APK 文件才可以安装，因此我们还需要对生成的 APK 文件进行签名。
+
+https://developer.android.com/studio/publish/app-signing
+
+### 使用 Android Studio 生成
+
+`Build → Generate Signed Bundle/APK`
+
+Android App Bundle 文件是用于上架 Google Play 商店的，使用这种类型的文件，Google Play 可以根据用户的手机，只下发它需要的那部分程序资源。
+
+Build Variants 选择 release，Signature Versions 同时勾选 V1 和 V2，表示会使用同时兼任新老版本系统的签名方式。
+
+---
+
+*How to solve “Key was created with errors:”*
+
+```bash
+keytool -importkeystore -srckeystore {src_path} -destkeystore {dest_path} -deststoretype pkcs12
+```
+
+### 使用 Gradle 生成
+
+在独立文件，比如 ***gradle.properties*** 中配置敏感数据，在 ***app/build.gradle*** 中去读取这些数据。
+
+***gradle.properties***：
+
+```
+KEY_PATH=...
+KEY_PASS=...
+ALIAS_NAME=...
+ALIAS_PASS=...
+```
+
+***app/build.gradle***  在 android 闭包中添加如下内容：
+
+```
+signingConfigs {
+    config {
+        storeFile file(KEY_PATH)
+        storePassword KEY_PASS
+        keyAlias ALIAS_NAME
+        keyPassword ALIAS_PASS
+    }
+}
+
+buildTypes {
+    release {
+        ...
+        signingConfig signingConfigs.config
+    }
+}
+```
+
+`Gradle → app → Tasks → build → assemble` ，同时生成 debug 和 release 两个版本的 APK 。
+
+自动生成在 `app/build/outputs/apk` 目录下。
+
+## 可以做的事情
+
+![](../images/chapter15/sunny_weather_mvvm.png)
+
+- 提供更加完整的天气信息
+- 允许选择多个城市，可以同时观察多个城市的天气信息
+- 增加后台更新天气功能，并允许用户手动设定后台的更新频率
+- 对深色主题进行适配
+
