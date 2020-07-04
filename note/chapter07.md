@@ -84,7 +84,7 @@ val age = prefs.getInt("age", 0)
 val married = prefs.getBoolean("married", false)
 ```
 
-很多应用程序中偏好设置功能起始就使用带了 SharedPreferences 技术。
+很多应用程序中偏好设置功能起始就使用到了 SharedPreferences 技术。
 
 ### 实现记住密码功能
 
